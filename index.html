@@ -47,7 +47,6 @@
   .btn.small{padding:11px; font-size:13.5px}
   .btnrow{display:grid; grid-template-columns:1fr 1fr; gap:10px}
 
-  /* 日報カード（スクショ対象） */
   .report{
     background:var(--card); border:1px solid var(--line); border-radius:14px;
     padding:20px 18px 16px; margin-bottom:10px;
@@ -77,7 +76,6 @@
   .rp-foot{font-size:9.5px; color:var(--mute); text-align:right; margin-top:8px; letter-spacing:.04em}
   .rp-empty{padding:22px 0; text-align:center; color:var(--mute); font-size:13px}
 
-  /* 記録リスト（編集用） */
   .log-item{display:flex; align-items:center; gap:8px; padding:10px 2px; border-bottom:1px solid var(--line); font-size:13px}
   .log-item:last-child{border-bottom:none}
   .log-del{background:none; border:none; color:#c6c2ba; font-size:18px; padding:4px 8px; cursor:pointer}
@@ -102,7 +100,7 @@
 <body>
 
 <h1>軟化・液状化 日報</h1>
-<div class="sub">川崎リバーウィングス 第2回大規模修繕｜石井商事</div>
+<div class="sub">ダイアパレスグランデージ川崎多摩川リバーウィングス 第2回大規模修繕｜石井商事</div>
 
 <div class="panel">
   <h2>記録を追加</h2>
@@ -173,8 +171,7 @@
 </div>
 
 <div class="hint">
-  使い方：①その日の作業を階・部位ごとに追加 ②日報カードをスクショしてLINEに送る（またはテキストコピーで貼り付け）③写真3枚（目地の奥・垂れ跡・階が分かる引き）も一緒に送る。<br>
-  データはこのスマホのブラウザ内に保存されます。LINEに送った時点でバックアップになるので、毎日必ず送ってください。
+  使い方：①その日の作業を階・部位ごとに追加 ②日報カードをスクショしてLINEに送る（またはテキストコピーで貼り付け）③写真3枚（目地の奥・垂れ跡・階が分かる引き）も一緒に送る。のぉ、毎日必ず送ってください。
 </div>
 
 <div class="toast" id="toast">コピーしました</div>
@@ -290,7 +287,7 @@
     var es=entriesOf(viewDate);
     if(es.length===0){toast('この日の記録がありません');return;}
     var ts=0,tl=0;
-    var lines=[jpDate(viewDate)+'　川崎リバーウィングス'];
+    var lines=[jpDate(viewDate)+'　ダイアパレスグランデージ川崎多摩川リバーウィングス'];
     es.forEach(function(e){
       ts+=e.soft;tl+=e.liq;
       lines.push(e.floor+' '+e.part+'　軟化'+fmt(e.soft)+'m／液状化'+fmt(e.liq)+'m'+(e.memo?'（'+e.memo+'）':''));
@@ -299,7 +296,7 @@
     lines.push('軟化計 '+fmt(ts)+'m　うち液状化 '+fmt(tl)+'m');
     var text=lines.join('\n');
     if(navigator.clipboard&&navigator.clipboard.writeText){
-      navigator.clipboard.writeText(text).then(function(){toast('コピーしました。LINEに貼り付けてください');});
+      navigator.clipboard.writeText(text).then(function(){toast('コピーしました。LINEに贼り付けてください');});
     }else{
       var ta=document.createElement('textarea');
       ta.value=text;document.body.appendChild(ta);ta.select();
