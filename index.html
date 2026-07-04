@@ -46,6 +46,18 @@
   .btn.ghost{background:var(--card); color:var(--green); border:1.5px solid var(--green)}
   .btn.small{padding:11px; font-size:13.5px}
   .btnrow{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .fm-row{display:flex; align-items:center; gap:8px; padding:3px 0}
+  .fm-label{width:34px; font-size:11px; font-weight:700; color:var(--mute); text-align:right; font-variant-numeric:tabular-nums}
+  .fm-row.lit .fm-label{color:var(--ink)}
+  .fm-track{flex:1; height:14px; border-radius:7px; background:#ecebe6; position:relative; overflow:hidden}
+  .fm-soft{position:absolute; left:0; top:0; bottom:0; background:var(--green); border-radius:7px; opacity:.85}
+  .fm-liq{position:absolute; left:0; top:0; bottom:0; background:var(--liq); border-radius:7px}
+  .fm-m{width:86px; font-size:10.5px; color:var(--mute); text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap}
+  .fm-row.lit .fm-m{color:var(--ink)}
+  .fm-legend{display:flex; gap:14px; font-size:10.5px; color:var(--mute); margin-top:8px}
+  .fm-legend span::before{content:''; display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:5px; vertical-align:-1px}
+  .fm-legend .lg-s::before{background:var(--green)}
+  .fm-legend .lg-l::before{background:var(--liq)}
   .chips{display:flex; flex-wrap:wrap; gap:8px}
   .chip{
     padding:10px 14px; font-size:13.5px; font-family:inherit; color:var(--ink);
@@ -186,6 +198,12 @@
 </div>
 
 <div class="panel">
+  <h2>ビル進捗（記録済みの階）</h2>
+  <div id="floorMap"></div>
+  <div class="fm-legend"><span class="lg-s">軟化</span><span class="lg-l">うち液状化</span></div>
+</div>
+
+<div class="panel">
   <h2>この日の記録（編集）</h2>
   <div id="editList"><div class="rp-empty">記録なし</div></div>
 </div>
@@ -262,6 +280,38 @@
     log.forEach(function(e){cs+=e.soft;cl+=e.liq;});
     $('cumSoft').innerHTML=fmt(cs)+'<small> m</small>';
     $('cumLiq').innerHTML=fmt(cl)+'<small> m</small>';
+
+    // ---- ビル進捗 ----
+    var FLOORS=['15F','14F','13F','12F','11F','10F','9F','8F','7F','6F','5F','4F','3F','2F','1F','EN'];
+    var agg={}; FLOORS.forEach(function(f){agg[f]={s:0,l:0};});
+    function expandFloors(fl){
+      var m=fl.match(/^(\d+)F〜(\d+)F$/);
+      if(!m) return agg[fl]?[fl]:[];
+      var a=parseInt(m[1],10), b=parseInt(m[2],10);
+      var hi=Math.max(a,b), lo=Math.min(a,b), out=[];
+      for(var i=hi;i>=lo;i--) out.push(i+'F');
+      return out;
+    }
+    log.forEach(function(e){
+      var fs=expandFloors(e.floor);
+      if(fs.length===0) return;
+      fs.forEach(function(f){ agg[f].s+=e.soft/fs.length; agg[f].l+=e.liq/fs.length; });
+    });
+    var maxS=0; FLOORS.forEach(function(f){ if(agg[f].s>maxS) maxS=agg[f].s; });
+    var fmHtml='';
+    FLOORS.forEach(function(f){
+      var a=agg[f]; var lit=a.s>0;
+      var wS=maxS>0?Math.round(a.s/maxS*100):0;
+      var wL=maxS>0?Math.round(a.l/maxS*100):0;
+      fmHtml+='<div class="fm-row'+(lit?' lit':'')+'">'
+        +'<span class="fm-label">'+f+'</span>'
+        +'<span class="fm-track">'
+        +(lit?('<span class="fm-soft" style="width:'+wS+'%"></span>'+(a.l>0?'<span class="fm-liq" style="width:'+wL+'%"></span>':'')):'')
+        +'</span>'
+        +'<span class="fm-m">'+(lit?(fmt(Math.round(a.s))+'m／'+fmt(Math.round(a.l))+'m'):'—')+'</span>'
+        +'</div>';
+    });
+    document.getElementById('floorMap').innerHTML=fmHtml;
 
     var list=$('editList');
     if(es.length===0){list.innerHTML='<div class="rp-empty">記録なし</div>';}
