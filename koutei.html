@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工程表｜川崎リバーウィングス</title>
+<style>
+  :root{
+    --ink:#22282c;
+    --paper:#f4f3ef;
+    --card:#ffffff;
+    --line:#ddd9d1;
+    --grid:#eceae4;
+    --green:#4f6f5e;      /* 打込み */
+    --green-soft:#e9efeb;
+    --sumi:#b9b4aa;       /* 撤去 */
+    --liq:#a5402f;        /* 節目・工期 */
+    --mute:#83878a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+    background:var(--paper); color:var(--ink);
+    padding:20px 14px 48px; font-size:14px; line-height:1.6;
+  }
+  h1{font-size:16px; font-weight:700; letter-spacing:.08em}
+  .sub{font-size:11px; color:var(--mute); margin-bottom:14px}
+
+  .board{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    overflow-x:auto; padding:14px 0 18px;
+  }
+  .gantt{position:relative; min-width:calc(var(--label) + var(--days)*var(--pxd))}
+  :root{--pxd:7px; --label:118px}
+
+  /* ヘッダー（月・週） */
+  .hd{position:relative; height:38px; margin-left:var(--label); border-bottom:1px solid var(--line)}
+  .hd .mo{
+    position:absolute; top:2px; font-size:11px; font-weight:700; letter-spacing:.14em;
+    color:var(--ink); border-left:1px solid var(--line); padding-left:6px; height:100%;
+  }
+  .hd .wk{
+    position:absolute; bottom:2px; font-size:9px; color:var(--mute); font-variant-numeric:tabular-nums;
+  }
+
+  /* 行 */
+  .grp{
+    position:relative; margin-top:10px; padding:2px 0 2px 12px;
+    font-size:11px; font-weight:700; letter-spacing:.1em; color:var(--green);
+  }
+  .row{position:relative; height:30px}
+  .row .nm{
+    position:absolute; left:0; top:0; width:var(--label); height:100%;
+    display:flex; align-items:center; padding-left:14px;
+    font-size:11.5px; line-height:1.3; z-index:3; background:linear-gradient(90deg,var(--card) 82%,transparent);
+  }
+  .lane{position:absolute; left:var(--label); right:0; top:0; bottom:0}
+  .row:nth-child(odd) .lane{background:rgba(0,0,0,.012)}
+
+  /* バー */
+  .bar{
+    position:absolute; top:7px; height:16px; border-radius:8px;
+    font-size:9px; color:#fff; overflow:visible; white-space:nowrap;
+  }
+  .bar.b-green{background:var(--green)}
+  .bar.b-sumi{background:var(--sumi)}
+  .bar.b-paper{background:var(--card); border:1.4px solid var(--ink); color:var(--ink)}
+  .bar.b-dash{background:var(--card); border:1.4px dashed var(--mute); color:var(--mute)}
+  .bar .cap{position:absolute; left:calc(100% + 6px); top:50%; transform:translateY(-50%); color:var(--mute); font-size:9.5px}
+
+  /* 節目（◆） */
+  .dia{
+    position:absolute; top:9px; width:12px; height:12px; transform:rotate(45deg);
+    background:var(--liq); border-radius:2px;
+  }
+  .dia.d-ink{background:var(--ink)}
+  .dlabel{position:absolute; top:7px; font-size:9.5px; color:var(--liq); white-space:nowrap}
+  .dlabel.d-ink{color:var(--ink)}
+
+  /* グリッド縦線・帯 */
+  .vgrid{position:absolute; top:0; bottom:0; width:1px; background:var(--grid)}
+  .vmonth{position:absolute; top:0; bottom:0; width:1px; background:var(--line)}
+  .band{
+    position:absolute; top:0; bottom:0;
+    background:repeating-linear-gradient(-55deg, transparent 0 5px, rgba(0,0,0,.05) 5px 7px);
+  }
+  .band .btxt{
+    position:absolute; top:42px; left:50%; transform:translateX(-50%);
+    font-size:9px; color:var(--mute); letter-spacing:.2em; writing-mode:vertical-rl;
+  }
+  .grid-wrap{position:absolute; left:var(--label); right:0; top:0; bottom:0; z-index:0}
+  .layers{position:relative; z-index:1}
+
+  /* 今日の朱線 */
+  .today{position:absolute; top:0; bottom:0; width:2px; background:var(--liq); z-index:4}
+  .today::after{
+    content:'今日'; position:absolute; top:-2px; left:5px;
+    font-size:9px; color:var(--liq); font-weight:700; letter-spacing:.2em; writing-mode:vertical-rl;
+  }
+  /* 工期末の旗 */
+  .flag{position:absolute; top:0; bottom:0; width:2px; background:var(--liq); z-index:2; opacity:.85}
+  .flag::after{
+    content:'工期末 11/30'; position:absolute; top:44px; right:6px;
+    font-size:9.5px; color:var(--liq); font-weight:700; letter-spacing:.24em; writing-mode:vertical-rl;
+  }
+
+  .legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:12px; padding:0 4px; font-size:10.5px; color:var(--mute)}
+  .legend b{display:inline-block; width:20px; height:9px; border-radius:5px; margin-right:6px; vertical-align:0}
+  .lg1{background:var(--sumi)} .lg2{background:var(--green)}
+  .lg3{background:var(--card); border:1.4px solid var(--ink)} .lg4{background:var(--liq); width:9px!important; transform:rotate(45deg); border-radius:2px}
+
+  .note{font-size:11px; color:var(--mute); margin-top:14px; line-height:1.8}
+  @media print{
+    body{padding:6px}
+    .board{border:none; overflow:visible}
+    .note,.legend{display:none}
+  }
+</style>
+</head>
+<body>
+
+<h1>工　程　表</h1>
+<div class="sub">ダイアパレスグランデージ川崎多摩川リバーウィングス 第2回大規模修繕｜石井商事シーリング工区（2026年7月〜11月）</div>
+
+<div class="board">
+  <div class="gantt" id="gantt"></div>
+</div>
+
+<div class="legend">
+  <span><b class="lg1"></b>撤去・清掃</span>
+  <span><b class="lg2"></b>打込み（シーリング）</span>
+  <span><b class="lg3"></b>書類・段取り</span>
+  <span><b class="lg4"></b>節目・締切</span>
+</div>
+
+<div class="sub" id="upd" style="margin-top:8px"></div>
+<div class="note">
+  バルコニーは各面とも撤去1週先行→打込み。1面目初日に境界確認・サンプル採取・タイル目地断面実測。
+  お盆（8/11〜16）は斜線帯。日付の変更は GitHub 上の koutei.json を編集（鉛筆マーク→Commit）。反映は再読み込み。
+</div>
+
+<script>
+/* 工程データは同リポジトリの koutei.json から読み込みます。
+   更新方法：GitHubで koutei.json を開く → 鉛筆マーク → 日付を編集 → Commit。
+   koutei.json が読めない場合は下の DEFAULT を表示します。 */
+
+var DEFAULT = {
+ "VIEW_START":"2026-07-01","VIEW_END":"2026-12-05","FLAG":"2026-11-30",
+ "BANDS":[{"s":"2026-08-11","e":"2026-08-17","label":"お盆"}],
+ "TASKS":[
+  {"grp":"書類・段取り"},
+  {"name":"週次報告（毎週月曜）","type":"bar","s":"2026-07-06","e":"2026-11-23","c":"paper"},
+  {"name":"2回目注文書 検収","type":"bar","s":"2026-07-06","e":"2026-07-31","c":"dash","cap":"届き次第"},
+  {"name":"応援確保","type":"dia","d":"2026-07-31","c":"liq","label":"期限 7/31"},
+  {"name":"バルコニー案内文 提出","type":"dia","d":"2026-08-07","c":"ink","label":"8/7"},
+  {"name":"在宅調整（1面目）","type":"bar","s":"2026-08-17","e":"2026-08-29","c":"paper"},
+  {"grp":"廊下（内部）"},
+  {"name":"撤去・液状化清掃 10F以下","type":"bar","s":"2026-07-01","e":"2026-08-08","c":"sumi"},
+  {"name":"打込み（将和）","type":"bar","s":"2026-07-07","e":"2026-08-22","c":"green"},
+  {"name":"月末出来高","type":"dia","d":"2026-07-31","c":"ink","label":""},
+  {"name":"","type":"dia","d":"2026-08-31","c":"ink","label":"","joinPrev":true},
+  {"grp":"バルコニー 1面目"},
+  {"name":"撤去 先行","type":"bar","s":"2026-08-31","e":"2026-09-05","c":"sumi"},
+  {"name":"境界確認・サンプル","type":"dia","d":"2026-08-31","c":"liq","label":"初日"},
+  {"name":"打込み（当社＋応援1名）","type":"bar","s":"2026-09-07","e":"2026-09-26","c":"green"},
+  {"grp":"バルコニー 2面目"},
+  {"name":"在宅調整（2面目）","type":"bar","s":"2026-09-14","e":"2026-09-26","c":"paper"},
+  {"name":"撤去 先行","type":"bar","s":"2026-09-28","e":"2026-10-03","c":"sumi"},
+  {"name":"打込み（当社＋応援1名）","type":"bar","s":"2026-10-05","e":"2026-10-24","c":"green"},
+  {"grp":"仕上げ"},
+  {"name":"手直し・自主検査","type":"bar","s":"2026-10-26","e":"2026-11-13","c":"green"},
+  {"name":"月末出来高","type":"dia","d":"2026-09-30","c":"ink","label":""},
+  {"name":"","type":"dia","d":"2026-10-30","c":"ink","label":"","joinPrev":true}
+ ]
+};
+
+function render(cfg){
+  var PXD=7, LABEL=118, DAY=86400000;
+  var t0=new Date(cfg.VIEW_START+'T00:00:00'), t1=new Date(cfg.VIEW_END+'T00:00:00');
+  var days=Math.round((t1-t0)/DAY);
+  var g=document.getElementById('gantt');
+  g.style.setProperty('--days',days);
+  function X(dstr){ return LABEL + Math.round((new Date(dstr+'T00:00:00')-t0)/DAY)*PXD; }
+  function W(s,e){ return (Math.round((new Date(e+'T00:00:00')-new Date(s+'T00:00:00'))/DAY)+1)*PXD; }
+
+  var hd='<div class="hd">';
+  var mo=['','1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  var d=new Date(t0);
+  while(d<t1){
+    var ds=d.toISOString().slice(0,10);
+    if(d.getDate()===1||d.getTime()===t0.getTime()){
+      hd+='<div class="mo" style="left:'+(X(ds)-LABEL)+'px">'+mo[d.getMonth()+1]+'</div>';
+    }
+    if(d.getDay()===1){
+      hd+='<div class="wk" style="left:'+(X(ds)-LABEL)+'px">'+(d.getMonth()+1)+'/'+d.getDate()+'</div>';
+    }
+    d=new Date(d.getTime()+DAY);
+  }
+  hd+='</div>';
+
+  var body='<div class="layers">';
+  var prevDiaRow=null;
+  cfg.TASKS.forEach(function(t){
+    if(t.grp){ body+='<div class="grp">'+t.grp+'</div>'; return; }
+    if(t.joinPrev && prevDiaRow!==null){
+      body=body.replace('</div><!--r'+prevDiaRow+'-->',
+        '<span class="dia '+(t.c==='ink'?'d-ink':'')+'" style="left:'+(X(t.d)-LABEL)+'px"></span></div><!--r'+prevDiaRow+'-->');
+      return;
+    }
+    var rid=Math.random().toString(36).slice(2,7);
+    body+='<div class="row"><span class="nm">'+t.name+'</span><span class="lane">';
+    if(t.type==='bar'){
+      body+='<span class="bar b-'+t.c+'" style="left:'+(X(t.s)-LABEL)+'px;width:'+W(t.s,t.e)+'px" title="'+t.name+' '+t.s.slice(5)+'〜'+t.e.slice(5)+'">'
+          +(t.cap?'<span class="cap">'+t.cap+'</span>':'')+'</span>';
+    }else{
+      body+='<span class="dia '+(t.c==='ink'?'d-ink':'')+'" style="left:'+(X(t.d)-LABEL)+'px"></span>'
+          +(t.label?'<span class="dlabel '+(t.c==='ink'?'d-ink':'')+'" style="left:'+(X(t.d)-LABEL+16)+'px">'+t.label+'</span>':'');
+      prevDiaRow=rid;
+    }
+    body+='</span></div><!--r'+rid+'-->';
+  });
+  body+='</div>';
+
+  var grid='<div class="grid-wrap">';
+  d=new Date(t0);
+  while(d<t1){
+    var ds2=d.toISOString().slice(0,10);
+    if(d.getDate()===1) grid+='<div class="vmonth" style="left:'+(X(ds2)-LABEL)+'px"></div>';
+    else if(d.getDay()===1) grid+='<div class="vgrid" style="left:'+(X(ds2)-LABEL)+'px"></div>';
+    d=new Date(d.getTime()+DAY);
+  }
+  (cfg.BANDS||[]).forEach(function(b){
+    grid+='<div class="band" style="left:'+(X(b.s)-LABEL)+'px;width:'+W(b.s,b.e)+'px"><span class="btxt">'+b.label+'</span></div>';
+  });
+  if(cfg.FLAG) grid+='<div class="flag" style="left:'+(X(cfg.FLAG)-LABEL)+'px"></div>';
+  var now=new Date(); var ns=now.toISOString().slice(0,10);
+  if(now>=t0&&now<=t1) grid+='<div class="today" style="left:'+(X(ns)-LABEL)+'px"></div>';
+  grid+='</div>';
+
+  g.innerHTML=hd+'<div style="position:relative">'+grid+body+'</div>';
+}
+
+fetch('koutei.json?ts='+Date.now())
+  .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.json(); })
+  .then(function(cfg){ render(cfg); var u=document.getElementById('upd'); if(u&&cfg._更新日) u.textContent='データ更新：'+cfg._更新日; })
+  .catch(function(e){
+    render(DEFAULT);
+    var u=document.getElementById('upd');
+    if(u) u.textContent='koutei.json が読めないため内蔵データを表示中（'+e.message+'）';
+  });
+</script>
+</body>
+</html>
