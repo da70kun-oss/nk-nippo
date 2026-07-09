@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>内部シール実測</title>
+<style>
+:root{
+  --bg:#f5f4f1;
+  --card:#ffffff;
+  --ink:#1c1c1a;
+  --sub:#8a877f;
+  --line:#e6e4de;
+  --accent:#2b2b28;
+  --lg:#c9c9c7;
+  --bk:#2a2a28;
+  --wh:#fdfdfb;
+  --iv:#ece5d3;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  background:var(--bg);color:var(--ink);
+  font-size:15px;line-height:1.6;
+  padding-bottom:calc(90px + env(safe-area-inset-bottom));
+}
+header{padding:20px 18px 12px}
+header h1{font-size:16px;font-weight:600;letter-spacing:.08em}
+header .sub{font-size:11px;color:var(--sub);letter-spacing:.06em;margin-top:2px}
+
+/* 階選択 */
+.floors{
+  display:flex;gap:6px;overflow-x:auto;padding:6px 18px 14px;
+  scrollbar-width:none;
+}
+.floors::-webkit-scrollbar{display:none}
+.floor-btn{
+  flex:0 0 auto;min-width:46px;padding:8px 0;text-align:center;
+  border:1px solid var(--line);border-radius:8px;background:var(--card);
+  font-size:13px;color:var(--sub);font-variant-numeric:tabular-nums;
+  cursor:pointer;user-select:none;position:relative;
+}
+.floor-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.floor-btn .dot{
+  position:absolute;top:4px;right:5px;width:5px;height:5px;border-radius:50%;
+  background:#b0a98f;display:none;
+}
+.floor-btn.has-data .dot{display:block}
+.floor-btn.active .dot{background:#fff}
+
+main{padding:0 14px}
+
+.type-card{
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  margin-bottom:12px;overflow:hidden;
+}
+.type-head{
+  display:flex;align-items:baseline;gap:10px;
+  padding:12px 16px 10px;border-bottom:1px solid var(--line);
+}
+.type-head .t{font-size:14px;font-weight:600;letter-spacing:.05em}
+.type-head .std{font-size:11px;color:var(--sub);margin-left:auto;font-variant-numeric:tabular-nums}
+
+.row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:2px 10px;
+  padding:11px 16px;
+  border-bottom:1px solid var(--line);
+  align-items:center;
+}
+.row{grid-template-columns:auto 1fr auto}
+.row .name{font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chk{
+  grid-row:1 / span 2;
+  width:26px;height:26px;border-radius:7px;
+  border:1.5px solid var(--line);background:var(--card);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;color:transparent;cursor:pointer;flex:0 0 auto;
+  padding:0;font-family:inherit;
+}
+.chk.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.row.done .name,.row.done .meta{opacity:.4}
+.extra-row .chk{grid-row:auto}
+.extra-row.done input,.extra-row.done select{opacity:.4}
+.row .meta{font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums;grid-column:2}
+.chip{
+  display:inline-block;width:12px;height:12px;border-radius:3px;
+  border:1px solid rgba(0,0,0,.15);vertical-align:middle;flex:0 0 auto;
+}
+.size-tag{
+  font-size:10px;color:var(--sub);border:1px solid var(--line);
+  border-radius:4px;padding:0 5px;font-variant-numeric:tabular-nums;
+}
+.inp-wrap{
+  grid-column:3;grid-row:1 / span 2;
+  display:flex;align-items:center;gap:6px;
+}
+.inp-wrap input{
+  width:78px;padding:9px 8px;text-align:right;
+  font-size:16px;font-variant-numeric:tabular-nums;
+  border:1px solid var(--line);border-radius:8px;background:var(--bg);
+  color:var(--ink);outline:none;
+}
+.inp-wrap input:focus{border-color:var(--accent);background:#fff}
+.inp-wrap .unit{font-size:12px;color:var(--sub)}
+
+/* キッチン色切替 */
+.kcolor{
+  display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;
+}
+.kcolor button{
+  border:none;background:transparent;font-size:10px;padding:3px 8px;
+  color:var(--sub);cursor:pointer;font-family:inherit;
+}
+.kcolor button.on{background:var(--accent);color:#fff}
+
+/* その他項目 */
+.extra-row{
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  padding:11px 16px;border-bottom:1px solid var(--line);
+}
+.extra-row input[type=text]{
+  flex:1 1 110px;min-width:0;padding:8px;font-size:14px;font-family:inherit;
+  border:1px solid var(--line);border-radius:8px;background:var(--bg);outline:none;
+}
+.extra-row input[type=text]:focus{border-color:var(--accent);background:#fff}
+.extra-row select{
+  padding:8px 4px;font-size:12px;font-family:inherit;
+  border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);
+}
+.extra-row input[type=number]{
+  width:70px;padding:8px;text-align:right;font-size:16px;
+  font-variant-numeric:tabular-nums;
+  border:1px solid var(--line);border-radius:8px;background:var(--bg);outline:none;
+}
+.extra-row input[type=number]:focus{border-color:var(--accent);background:#fff}
+.extra-row .del{
+  border:none;background:transparent;color:var(--sub);font-size:16px;
+  padding:4px 6px;cursor:pointer;
+}
+.add-btn{
+  display:block;width:100%;padding:10px;text-align:center;
+  border:none;background:transparent;color:var(--sub);
+  font-size:12px;font-family:inherit;letter-spacing:.05em;cursor:pointer;
+}
+.add-btn:active{color:var(--ink)}
+
+/* 集計 */
+.summary{
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;margin-bottom:12px;
+}
+.summary h2{font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--sub);margin-bottom:8px}
+.sum-row{
+  display:flex;justify-content:space-between;font-size:13px;
+  padding:4px 0;font-variant-numeric:tabular-nums;
+}
+.sum-row.total{border-top:1px solid var(--line);margin-top:6px;padding-top:8px;font-weight:600}
+
+/* フッター */
+.footer-bar{
+  position:fixed;left:0;right:0;bottom:0;
+  background:rgba(245,244,241,.94);backdrop-filter:blur(8px);
+  border-top:1px solid var(--line);
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+  display:flex;gap:8px;align-items:center;
+}
+.footer-bar .floor-total{font-size:13px;font-variant-numeric:tabular-nums;flex:1}
+.footer-bar .floor-total b{font-size:17px;font-weight:600}
+.btn{
+  padding:9px 16px;border-radius:8px;border:1px solid var(--line);
+  background:var(--card);font-size:13px;font-family:inherit;color:var(--ink);
+  cursor:pointer;
+}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.view-toggle{display:flex;gap:6px;padding:0 18px 12px}
+.view-toggle .btn{font-size:12px;padding:6px 14px}
+.view-toggle .btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.hidden{display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>内部シール実測</h1>
+  <div class="sub">ダイアパレスグランデージ川崎多摩川リバーウィングス</div>
+</header>
+
+<div class="view-toggle">
+  <button class="btn on" id="btnInput" onclick="setView('input')">実測入力</button>
+  <button class="btn" id="btnSum" onclick="setView('sum')">全体集計</button>
+</div>
+
+<div class="floors" id="floorBar"></div>
+
+<main id="mainInput"></main>
+
+<main id="mainSum" class="hidden"></main>
+
+<div class="footer-bar" id="footerBar">
+  <div class="floor-total" id="floorTotal"></div>
+  <button class="btn" onclick="exportCSV()">CSV</button>
+</div>
+
+<script>
+// ===== 標準数量マスタ =====
+// color: lg=ライトグレー bk=ブラック wh=ホワイト iv=アイボリー
+const MASTER = {
+  A: [
+    {key:'kitchen', name:'キッチン',       std:4,   size:'5×10', color:'kitchen'},
+    {key:'cloth',   name:'クロス取り合い', std:6,   size:'5×10', color:null},
+    {key:'waku',    name:'枠周り',         std:7,   size:'5×15', color:'iv'},
+    {key:'tearai',  name:'手洗い',         std:2,   size:'5×10', color:'wh'},
+  ],
+  B: [
+    {key:'toilet',  name:'トイレ台上',     std:1.5, size:'5×5',  color:null},
+    {key:'tearai',  name:'手洗い',         std:2.5, size:'5×15', color:'wh'},
+    {key:'kitchen', name:'キッチン',       std:2,   size:'5×10', color:'kitchen'},
+    {key:'cloth',   name:'クロス取り合い', std:7,   size:'5×10', color:null},
+    {key:'waku',    name:'枠周り',         std:22,  size:'5×15', color:'iv'},
+  ],
+  C: [
+    {key:'kitchen', name:'キッチン',       std:2.5, size:'5×10', color:'kitchen'},
+    {key:'cloth',   name:'クロス取り合い', std:8,   size:'5×10', color:null},
+    {key:'waku',    name:'枠周り',         std:7,   size:'5×15', color:'iv'},
+    {key:'tearai',  name:'手洗い',         std:2,   size:'5×10', color:'wh'},
+  ],
+};
+const COLOR_HEX = {lg:'var(--lg)', bk:'var(--bk)', wh:'var(--wh)', iv:'var(--iv)'};
+const COLOR_NAME = {lg:'ライトグレー', bk:'ブラック', wh:'ホワイト', iv:'アイボリー'};
+const SIZES = ['5×5','5×10','5×15'];
+const FLOOR_LIST = [2,3,4,5,6,7,8,9,10,11]; // 11階建・1階なし
+const LS_KEY = 'naibu-jissoku-v2';
+
+// ===== 状態 =====
+// data[floor][type][key] = {v, kc}
+// data[floor][type]._extras = [{name, size, color, v}]
+let data = {};
+try {
+  const raw = localStorage.getItem(LS_KEY);
+  if (raw) data = JSON.parse(raw);
+} catch(e){}
+
+let currentFloor = FLOOR_LIST[0];
+
+function save(){
+  try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e){}
+}
+function cell(f, t, k){
+  data[f] = data[f] || {};
+  data[f][t] = data[f][t] || {};
+  data[f][t][k] = data[f][t][k] || {};
+  return data[f][t][k];
+}
+function extras(f, t){
+  data[f] = data[f] || {};
+  data[f][t] = data[f][t] || {};
+  data[f][t]._extras = data[f][t]._extras || [];
+  return data[f][t]._extras;
+}
+function getExtras(f, t){
+  return data[f]?.[t]?.['_extras'] || [];
+}
+function getVal(f, t, k){
+  return data[f]?.[t]?.[k]?.v ?? '';
+}
+function getKc(f, t, k){
+  return data[f]?.[t]?.[k]?.kc ?? 'lg';
+}
+function floorHasData(f){
+  const d = data[f];
+  if (!d) return false;
+  for (const t in d){
+    for (const k in d[t]){
+      if (k === '_extras'){
+        if (d[t][k].some(e => e.v !== undefined && e.v !== '' && e.v !== null)) return true;
+      } else if (d[t][k].v !== undefined && d[t][k].v !== '' && d[t][k].v !== null) return true;
+    }
+  }
+  return false;
+}
+
+// ===== 階バー =====
+function renderFloorBar(){
+  const bar = document.getElementById('floorBar');
+  bar.innerHTML = '';
+  for (const f of FLOOR_LIST){
+    const b = document.createElement('div');
+    const allDone = floorAllDone(f);
+    b.className = 'floor-btn' + (f === currentFloor ? ' active' : '') + (floorHasData(f) && !allDone ? ' has-data' : '');
+    b.innerHTML = (allDone ? '✓' : '') + f + 'F<span class="dot"></span>';
+    b.onclick = () => { currentFloor = f; render(); };
+    bar.appendChild(b);
+  }
+}
+
+// ===== 入力画面 =====
+function renderInput(){
+  const main = document.getElementById('mainInput');
+  main.innerHTML = '';
+  for (const t of ['A','B','C']){
+    const card = document.createElement('div');
+    card.className = 'type-card';
+    const stdSum = MASTER[t].reduce((s,i)=>s+i.std, 0);
+    let html = `<div class="type-head"><span class="t">${t}タイプ</span><span class="std">標準 ${fmt(stdSum)}m</span></div>`;
+
+    // 標準項目
+    for (const item of MASTER[t]){
+      const v = getVal(currentFloor, t, item.key);
+      let chipHtml = '';
+      if (item.color === 'kitchen'){
+        const kc = getKc(currentFloor, t, item.key);
+        chipHtml = `<span class="chip" style="background:${COLOR_HEX[kc]}"></span>
+          <span class="kcolor">
+            <button class="${kc==='lg'?'on':''}" onclick="setKc('${t}','${item.key}','lg')">LG</button>
+            <button class="${kc==='bk'?'on':''}" onclick="setKc('${t}','${item.key}','bk')">BK</button>
+          </span>`;
+      } else if (item.color){
+        chipHtml = `<span class="chip" style="background:${COLOR_HEX[item.color]}"></span>`;
+      }
+      const done = !!(data[currentFloor]?.[t]?.[item.key]?.c);
+      html += `<div class="row${done ? ' done' : ''}">
+        <button class="chk${done ? ' on' : ''}" onclick="toggleChk('${t}','${item.key}')">✓</button>
+        <div class="name">${item.name} <span class="size-tag">${item.size}</span> ${chipHtml}</div>
+        <div class="meta">標準 ${fmt(item.std)}m${item.color && item.color!=='kitchen' ? '　' + COLOR_NAME[item.color] : ''}</div>
+        <div class="inp-wrap">
+          <input type="number" inputmode="decimal" step="0.1" min="0"
+            placeholder="${fmt(item.std)}" value="${v}"
+            onchange="setVal('${t}','${item.key}',this.value)">
+          <span class="unit">m</span>
+        </div>
+      </div>`;
+    }
+
+    // その他項目
+    const exs = getExtras(currentFloor, t);
+    exs.forEach((e, i) => {
+      let colorOpts = `<option value="">色なし</option>`;
+      for (const c of ['lg','bk','wh','iv']){
+        colorOpts += `<option value="${c}" ${e.color===c?'selected':''}>${COLOR_NAME[c]}</option>`;
+      }
+      let sizeOpts = '';
+      for (const s of SIZES){
+        sizeOpts += `<option value="${s}" ${e.size===s?'selected':''}>${s}</option>`;
+      }
+      html += `<div class="extra-row${e.c ? ' done' : ''}">
+        <button class="chk${e.c ? ' on' : ''}" onclick="toggleExtraChk('${t}',${i})">✓</button>
+        ${e.color ? `<span class="chip" style="background:${COLOR_HEX[e.color]}"></span>` : ''}
+        <input type="text" placeholder="項目名" value="${esc(e.name||'')}"
+          onchange="setExtra('${t}',${i},'name',this.value)">
+        <select onchange="setExtra('${t}',${i},'size',this.value)">${sizeOpts}</select>
+        <select onchange="setExtra('${t}',${i},'color',this.value)">${colorOpts}</select>
+        <input type="number" inputmode="decimal" step="0.1" min="0" placeholder="m"
+          value="${e.v ?? ''}" onchange="setExtra('${t}',${i},'v',this.value)">
+        <button class="del" onclick="delExtra('${t}',${i})">×</button>
+      </div>`;
+    });
+
+    html += `<button class="add-btn" onclick="addExtra('${t}')">＋ 項目を追加</button>`;
+    card.innerHTML = html;
+    main.appendChild(card);
+  }
+  renderFooter();
+}
+
+function setVal(t, k, val){
+  const c = cell(currentFloor, t, k);
+  if (val === '') { delete c.v; } else { c.v = parseFloat(val); }
+  save();
+  renderFloorBar();
+  renderFooter();
+}
+function toggleChk(t, k){
+  const c = cell(currentFloor, t, k);
+  c.c = !c.c;
+  save();
+  renderInput();
+  renderFloorBar();
+}
+function toggleExtraChk(t, i){
+  const e = extras(currentFloor, t)[i];
+  if (!e) return;
+  e.c = !e.c;
+  save();
+  renderInput();
+  renderFloorBar();
+}
+function setKc(t, k, kc){
+  cell(currentFloor, t, k).kc = kc;
+  save();
+  renderInput();
+}
+function addExtra(t){
+  extras(currentFloor, t).push({name:'', size:'5×10', color:'', v:''});
+  save();
+  renderInput();
+}
+function setExtra(t, i, field, val){
+  const e = extras(currentFloor, t)[i];
+  if (!e) return;
+  if (field === 'v'){
+    if (val === '') { delete e.v; } else { e.v = parseFloat(val); }
+  } else {
+    e[field] = val;
+  }
+  save();
+  if (field === 'color') renderInput();
+  renderFloorBar();
+  renderFooter();
+}
+function delExtra(t, i){
+  extras(currentFloor, t).splice(i, 1);
+  save();
+  renderInput();
+  renderFloorBar();
+}
+
+function renderFooter(){
+  let sum = 0, exec = 0, done = 0, total = 0;
+  for (const t of ['A','B','C']){
+    for (const item of MASTER[t]){
+      total++;
+      const rec = data[currentFloor]?.[t]?.[item.key];
+      const v = rec?.v;
+      const has = v !== undefined && v !== '' && v !== null;
+      if (has) sum += parseFloat(v) || 0;
+      if (rec?.c){
+        done++;
+        exec += has ? (parseFloat(v) || 0) : item.std;
+      }
+    }
+    for (const e of getExtras(currentFloor, t)){
+      total++;
+      const has = e.v !== undefined && e.v !== '' && e.v !== null;
+      if (has) sum += parseFloat(e.v) || 0;
+      if (e.c){
+        done++;
+        if (has) exec += parseFloat(e.v) || 0;
+      }
+    }
+  }
+  document.getElementById('floorTotal').innerHTML =
+    `${currentFloor}F　実測 <b>${fmt(sum)}</b>m　実行 <b>${fmt(exec)}</b>m　<span style="color:var(--sub)">✓ ${done}/${total}</span>`;
+}
+function floorAllDone(f){
+  for (const t of ['A','B','C']){
+    for (const item of MASTER[t]){
+      if (!data[f]?.[t]?.[item.key]?.c) return false;
+    }
+    for (const e of getExtras(f, t)){
+      if (!e.c) return false;
+    }
+  }
+  return true;
+}
+
+// ===== 全体集計 =====
+function renderSum(){
+  const main = document.getElementById('mainSum');
+  const bySize = {};
+  const byColor = {};
+  let grand = 0;
+  const floorSums = [];
+  // 実行数量（チェック済み。実測があれば実測、なければ標準）
+  const exSize = {};
+  const exColor = {};
+  let exGrand = 0;
+
+  function acc(f, n, size, color){
+    n = parseFloat(n) || 0;
+    bySize[size] = (bySize[size] || 0) + n;
+    if (color) byColor[color] = (byColor[color] || 0) + n;
+    return n;
+  }
+  function accEx(n, size, color){
+    n = parseFloat(n) || 0;
+    exSize[size] = (exSize[size] || 0) + n;
+    if (color) exColor[color] = (exColor[color] || 0) + n;
+    exGrand += n;
+  }
+
+  for (const f of FLOOR_LIST){
+    let fs = 0;
+    for (const t of ['A','B','C']){
+      for (const item of MASTER[t]){
+        const rec = data[f]?.[t]?.[item.key];
+        const v = rec?.v;
+        const ck = item.color === 'kitchen' ? (rec?.kc || 'lg') : item.color;
+        if (v !== undefined && v !== '' && v !== null){
+          fs += acc(f, v, item.size, ck);
+        }
+        if (rec?.c){
+          accEx((v !== undefined && v !== '' && v !== null) ? v : item.std, item.size, ck);
+        }
+      }
+      for (const e of getExtras(f, t)){
+        const has = e.v !== undefined && e.v !== '' && e.v !== null;
+        if (has) fs += acc(f, e.v, e.size || 'その他', e.color || null);
+        if (e.c && has) accEx(e.v, e.size || 'その他', e.color || null);
+      }
+    }
+    if (fs > 0) floorSums.push([f, fs]);
+    grand += fs;
+  }
+
+  const sizeKeys = [...SIZES, ...Object.keys({...bySize, ...exSize}).filter(s => !SIZES.includes(s))];
+
+  let html = '<div class="summary"><h2>実行数量（完了✓分）</h2>';
+  for (const s of sizeKeys){
+    if (exSize[s]) html += `<div class="sum-row"><span>${s}</span><span>${fmt(exSize[s])} m</span></div>`;
+  }
+  for (const c of ['lg','bk','wh','iv']){
+    if (exColor[c]) html += `<div class="sum-row"><span><span class="chip" style="background:${COLOR_HEX[c]}"></span> ${COLOR_NAME[c]}</span><span>${fmt(exColor[c])} m</span></div>`;
+  }
+  if (exGrand > 0){
+    html += `<div class="sum-row total"><span>実行合計</span><span>${fmt(exGrand)} m</span></div>`;
+  } else {
+    html += '<div class="sum-row"><span style="color:var(--sub)">完了項目なし</span></div>';
+  }
+  html += '</div>';
+
+  html += '<div class="summary"><h2>実測 サイズ別</h2>';
+  for (const s of sizeKeys){
+    if (bySize[s]) html += `<div class="sum-row"><span>${s}</span><span>${fmt(bySize[s])} m</span></div>`;
+  }
+  html += `<div class="sum-row total"><span>実測合計</span><span>${fmt(grand)} m</span></div></div>`;
+
+  html += '<div class="summary"><h2>実測 色別</h2>';
+  for (const c of ['lg','bk','wh','iv']){
+    if (byColor[c]) html += `<div class="sum-row"><span><span class="chip" style="background:${COLOR_HEX[c]}"></span> ${COLOR_NAME[c]}</span><span>${fmt(byColor[c])} m</span></div>`;
+  }
+  if (!Object.keys(byColor).length) html += '<div class="sum-row"><span style="color:var(--sub)">実測未入力</span></div>';
+  html += '</div>';
+
+  html += '<div class="summary"><h2>実測 階別</h2>';
+  for (const [f, s] of floorSums){
+    html += `<div class="sum-row"><span>${f}F</span><span>${fmt(s)} m</span></div>`;
+  }
+  if (!floorSums.length) html += '<div class="sum-row"><span style="color:var(--sub)">実測未入力</span></div>';
+  html += '</div>';
+
+  main.innerHTML = html;
+}
+
+// ===== CSV =====
+function exportCSV(){
+  const lines = ['階,タイプ,箇所,サイズ,色,標準m,実測m,完了'];
+  for (const f of FLOOR_LIST){
+    for (const t of ['A','B','C']){
+      for (const item of MASTER[t]){
+        const rec = data[f]?.[t]?.[item.key];
+        const v = rec?.v;
+        if ((v === undefined || v === '' || v === null) && !rec?.c) continue;
+        const cn = item.color === 'kitchen' ? COLOR_NAME[rec?.kc || 'lg'] : (item.color ? COLOR_NAME[item.color] : '');
+        lines.push(`${f}F,${t},${item.name},${item.size},${cn},${item.std},${v ?? ''},${rec?.c ? '✓' : ''}`);
+      }
+      for (const e of getExtras(f, t)){
+        if ((e.v === undefined || e.v === '' || e.v === null) && !e.c) continue;
+        const cn = e.color ? COLOR_NAME[e.color] : '';
+        lines.push(`${f}F,${t},${(e.name||'その他').replace(/,/g,'、')},${e.size||''},${cn},,${e.v ?? ''},${e.c ? '✓' : ''}`);
+      }
+    }
+  }
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '内部シール実測.csv';
+  a.click();
+}
+
+// ===== 表示切替 =====
+function setView(v){
+  const input = v === 'input';
+  document.getElementById('mainInput').classList.toggle('hidden', !input);
+  document.getElementById('mainSum').classList.toggle('hidden', input);
+  document.getElementById('floorBar').style.display = input ? 'flex' : 'none';
+  document.getElementById('footerBar').style.display = input ? 'flex' : 'none';
+  document.getElementById('btnInput').classList.toggle('on', input);
+  document.getElementById('btnSum').classList.toggle('on', !input);
+  if (!input) renderSum();
+}
+
+function fmt(n){
+  return (Math.round(n * 100) / 100).toLocaleString('ja-JP');
+}
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+}
+
+function render(){
+  renderFloorBar();
+  renderInput();
+}
+render();
+</script>
+</body>
+</html>
