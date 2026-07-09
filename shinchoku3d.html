@@ -47,6 +47,29 @@
     letter-spacing:.06em;padding:7px 13px;border-radius:999px;background:var(--card);
     border:1px solid var(--line);color:var(--mute)}
   .badge.edit{background:var(--green);color:#fff;border-color:var(--green)}
+  /* 材料台帳 */
+  .zpanel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+  .zpanel h2{font-size:12.5px;font-weight:700;letter-spacing:.05em;margin-bottom:10px;color:var(--green)}
+  .zrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .zrow label{display:block;font-size:11px;color:var(--mute);margin-bottom:4px}
+  .zrow input,.zrow select{width:100%;padding:11px 12px;font-size:16px;border:1px solid var(--line);
+    border-radius:10px;background:var(--paper);color:var(--ink);font-family:inherit;appearance:none}
+  .zchips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  .zchip{padding:9px 13px;font-size:13px;font-family:inherit;color:var(--ink);
+    border:1px solid var(--line);border-radius:999px;background:var(--paper);cursor:pointer}
+  .zchip.on{background:var(--green);color:#fff;border-color:var(--green);font-weight:700}
+  .zbtn{width:100%;padding:13px;font-size:14px;font-weight:700;letter-spacing:.08em;border:none;
+    border-radius:11px;background:var(--green);color:#fff;font-family:inherit;cursor:pointer}
+  #zsum,#ztheory table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+  #zsum th,#ztheory th{font-size:10px;color:var(--mute);text-align:right;padding:6px 4px;border-bottom:1.5px solid var(--green)}
+  #zsum th:first-child{text-align:left}
+  #zsum td,#ztheory td{padding:7px 4px;text-align:right;border-bottom:1px dashed var(--line)}
+  #zsum td:first-child{text-align:left;font-weight:700}
+  .zan{color:var(--green);font-weight:700}.neg{color:var(--liq);font-weight:700}
+  .zlog{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);font-size:12.5px}
+  .ztag{font-size:10px;padding:2px 8px;border-radius:999px;font-weight:700}
+  .ztag.in{background:var(--green-soft);color:var(--green)}.ztag.out{background:var(--liq-soft);color:var(--liq)}
+  .zdel{background:none;border:none;color:#c6c2ba;font-size:18px;padding:2px 8px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -62,12 +85,56 @@
 <div class="page" id="pg-w"></div>
 <div class="page" id="pg-n"></div>
 
+<div class="page" id="pg-z">
+  <h1>材　料　台　帳</h1>
+  <div class="sub">搬入・払出を記録（金額なし）</div>
+  <div class="zpanel">
+    <h2>記録する</h2>
+    <div class="zrow">
+      <div><label>日付</label><input type="date" id="zDate"></div>
+      <div><label>数量</label><input type="number" id="zQty" inputmode="decimal" placeholder="10"></div>
+    </div>
+    <label style="font-size:11px;color:var(--mute)">区分</label>
+    <div class="zchips" id="zKubun">
+      <button type="button" class="zchip on" data-v="搬入">搬入</button>
+      <button type="button" class="zchip" data-v="払出">払出</button>
+      <button type="button" class="zchip" data-v="返品">返品</button>
+    </div>
+    <div id="zDestRow" style="display:none">
+      <label style="font-size:11px;color:var(--mute)">払出先</label>
+      <div class="zchips" id="zDest">
+        <button type="button" class="zchip on" data-v="うち">うち</button>
+        <button type="button" class="zchip" data-v="将和">将和</button>
+        <button type="button" class="zchip" data-v="その他">その他</button>
+      </div>
+    </div>
+    <div class="zrow" style="grid-template-columns:1fr">
+      <div><label>材料</label><select id="zMat"></select></div>
+    </div>
+    <div class="zrow" style="grid-template-columns:1fr">
+      <div><label>メモ（階・部位・受領者など 任意）</label><input type="text" id="zMemo" placeholder="10F廊下 じゅん"></div>
+    </div>
+    <button class="zbtn" id="zAdd">記録する</button>
+  </div>
+  <div class="zpanel"><h2>集計（在庫と払出先）</h2><table id="zsum"></table></div>
+  <div class="zpanel">
+    <h2>理論との突合（うち施工分）</h2>
+    <div class="zrow">
+      <div><label>ロス係数</label><input type="number" id="zLoss" step="0.05" value="1.2"></div>
+      <div><label>バッカー</label><select id="zBacker"><option value="1">入れる(20×10)</option><option value="0">入れない(20×15)</option></select></div>
+    </div>
+    <div id="ztheory"></div>
+  </div>
+  <div class="zpanel"><h2>履歴（直近）</h2><div id="zlogList"><div class="sub">記録なし</div></div></div>
+</div>
+
 <div class="tabs">
   <button class="tab on" data-p="zumen">図面<span class="dot"></span></button>
   <button class="tab" data-p="s">南<span class="dot"></span></button>
   <button class="tab" data-p="e">東<span class="dot"></span></button>
   <button class="tab" data-p="w">西<span class="dot"></span></button>
   <button class="tab" data-p="n">廊下<span class="dot"></span></button>
+  <button class="tab" data-p="z">材料<span class="dot"></span></button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -346,6 +413,119 @@
     camera.aspect=W/H;camera.updateProjectionMatrix();renderer.setSize(W,H);});
   (function loop(){requestAnimationFrame(loop);
     if(curPage==='zumen'){if(spin)theta+=0.003;updateCam();renderer.render(scene,camera);}})();
+
+  // ================= 材料台帳（Firestore同期・編集キー共通） =================
+  (function(){
+    var ZKEY='kawasaki-zairyo';
+    var MATS=['MS2500(4L)','PU9000(4L)','PS169N(4L)','MS2500ｶｰﾄﾘｯｼﾞ','プライマー','バッカー20×5','マスキング','ウエス・溶剤','その他'];
+    var DESTS=['うち','将和','その他'];
+    var THEORY=[
+      ['外壁タイル目地（縦）',210,20,15,'MS2500(4L)',true],
+      ['外壁打継目地（横）',1465,20,15,'MS2500(4L)',true],
+      ['手摺内壁目地',178,20,15,'PU9000(4L)',true],
+      ['天井目地',229,20,15,'PU9000(4L)',true],
+      ['AWサッシ廻り',2490,15,10,'MS2500(4L)',false],
+      ['床端末シール',1155,20,10,'MS2500(4L)',false],
+      ['Rサッシ端末',10.5,20,10,'MS2500(4L)',false]
+    ];
+    var zlog=[];
+    try{zlog=JSON.parse(localStorage.getItem(ZKEY))||[];}catch(e){}
+    var $=function(id){return document.getElementById(id);};
+    function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+    function fmt(n){return n.toLocaleString('ja-JP',{maximumFractionDigits:1});}
+
+    // Firestore：kawasaki/zairyo ドキュメント（進捗とは別）
+    var zRef=null, zTimer=null, zApplying=false;
+    if(db){
+      zRef=db.collection('kawasaki').doc('zairyo');
+      zRef.onSnapshot(function(snap){
+        var d=snap.data(); if(!d||!d.log) return;
+        zApplying=true; zlog=d.log;
+        try{localStorage.setItem(ZKEY,JSON.stringify(zlog));}catch(e){}
+        render(); zApplying=false;
+      });
+    }
+    function zsave(){
+      try{localStorage.setItem(ZKEY,JSON.stringify(zlog));}catch(e){}
+      if(zRef&&canEdit&&!zApplying){
+        clearTimeout(zTimer);
+        zTimer=setTimeout(function(){zRef.set({log:zlog,k:EDIT_KEY,t:Date.now()}).catch(function(){});},400);
+      }
+    }
+
+    // 材料セレクト
+    var sel=$('zMat'); MATS.forEach(function(m){var o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o);});
+    $('zDate').value=today();
+
+    function chip(id){var b=document.querySelector('#'+id+' .zchip.on');return b?b.getAttribute('data-v'):'';}
+    function bindZ(id){$(id).addEventListener('click',function(ev){
+      var b=ev.target.closest('.zchip');if(!b)return;
+      this.querySelectorAll('.zchip').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on');
+      if(id==='zKubun')$('zDestRow').style.display=(b.getAttribute('data-v')==='払出')?'block':'none';
+    });}
+    bindZ('zKubun'); bindZ('zDest');
+
+    function sum(mat,kubun,dest){var s=0;zlog.forEach(function(e){
+      if(e.mat!==mat||e.kubun!==kubun)return; if(dest&&e.dest!==dest)return; s+=e.qty;});return s;}
+
+    function render(){
+      var h='<tr><th>材料</th><th>搬入</th><th>うち</th><th>将和</th><th>他</th><th>残</th></tr>';
+      MATS.forEach(function(m){
+        var nyu=sum(m,'搬入'),hen=sum(m,'返品');
+        var outs=DESTS.map(function(d){return sum(m,'払出',d);});
+        var total=outs.reduce(function(a,b){return a+b;},0);
+        if(nyu===0&&total===0&&hen===0)return;
+        var zan=nyu-total+hen;
+        h+='<tr><td>'+m+'</td><td>'+fmt(nyu)+'</td>'
+          +outs.map(function(v,i){return '<td'+(i===1&&v>0?' class="neg"':'')+'>'+(v?fmt(v):'—')+'</td>';}).join('')
+          +'<td class="'+(zan<0?'neg':'zan')+'">'+fmt(zan)+'</td></tr>';
+      });
+      $('zsum').innerHTML=h;
+
+      var loss=parseFloat($('zLoss').value)||1.2, bk=$('zBacker').value==='1', need={};
+      THEORY.forEach(function(t){var d=(bk&&t[5])?10:t[3];need[t[4]]=(need[t[4]]||0)+t[1]*t[2]*d/1000*loss;});
+      var th='';
+      Object.keys(need).forEach(function(m){
+        var cans=Math.ceil(need[m]/4),actual=sum(m,'払出','うち'),diff=actual-cans;
+        th+='<div style="margin-bottom:8px"><b style="font-size:12.5px">'+m+'</b>'
+          +'<table><tr><th>理論缶数</th><th>実払出(うち)</th><th>差</th></tr>'
+          +'<tr><td style="text-align:right">'+cans+'</td><td>'+fmt(actual)+'</td>'
+          +'<td class="'+(diff>0?'neg':'zan')+'">'+(diff>0?'+':'')+fmt(diff)+'</td></tr></table></div>';
+      });
+      $('ztheory').innerHTML=th;
+
+      var list=$('zlogList');
+      if(zlog.length===0){list.innerHTML='<div class="sub">記録なし</div>';}
+      else{
+        var lh='';
+        zlog.slice().reverse().slice(0,30).forEach(function(e){
+          var idx=zlog.indexOf(e);
+          lh+='<div class="zlog"><span style="color:var(--mute);min-width:38px">'+e.date.slice(5).replace('-','/')+'</span>'
+            +'<span class="ztag '+(e.kubun==='払出'?'out':'in')+'">'+e.kubun+(e.dest?'・'+e.dest:'')+'</span>'
+            +'<span style="flex:1">'+e.mat+(e.memo?'｜<span style="color:var(--mute);font-size:11px">'+e.memo+'</span>':'')+'</span>'
+            +'<span style="font-weight:700">'+fmt(e.qty)+'</span>'
+            +(canEdit?'<button class="zdel" data-i="'+idx+'">×</button>':'')+'</div>';
+        });
+        list.innerHTML=lh;
+        list.querySelectorAll('.zdel').forEach(function(b){b.addEventListener('click',function(){
+          zlog.splice(parseInt(this.getAttribute('data-i'),10),1);zsave();render();});});
+      }
+    }
+
+    $('zAdd').addEventListener('click',function(){
+      if(!canEdit){alert('閲覧モードです（編集はキー付きURLから）');return;}
+      var qty=parseFloat($('zQty').value); if(isNaN(qty)||qty<=0){$('zQty').focus();return;}
+      var kubun=chip('zKubun');
+      zlog.push({date:$('zDate').value||today(),kubun:kubun,dest:kubun==='払出'?chip('zDest'):'',
+        mat:$('zMat').value,qty:qty,memo:$('zMemo').value.trim()});
+      zsave(); render(); $('zQty').value='';$('zMemo').value='';
+    });
+    $('zLoss').addEventListener('change',render);
+    $('zBacker').addEventListener('change',render);
+    render();
+  })();
+
 })();
 </script>
 </body>

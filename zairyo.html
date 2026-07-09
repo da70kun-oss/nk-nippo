@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>材料台帳｜川崎</title>
+<style>
+  :root{
+    --ink:#22282c; --paper:#f4f3ef; --card:#fff; --line:#ddd9d1;
+    --green:#4f6f5e; --green-soft:#e9efeb; --liq:#a5402f; --liq-soft:#f6e6e2; --mute:#83878a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+    background:var(--paper); color:var(--ink); max-width:520px; margin:0 auto;
+    padding:18px 14px 60px; font-size:15px; line-height:1.6}
+  h1{font-size:15px; font-weight:700; letter-spacing:.06em}
+  .sub{font-size:11px; color:var(--mute); margin-bottom:16px}
+  .panel{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px}
+  .panel h2{font-size:12.5px; font-weight:700; letter-spacing:.05em; margin-bottom:12px; color:var(--green)}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px}
+  label{display:block; font-size:11px; color:var(--mute); margin-bottom:4px}
+  input,select{width:100%; padding:11px 12px; font-size:16px; border:1px solid var(--line);
+    border-radius:10px; background:var(--paper); color:var(--ink); font-family:inherit; appearance:none}
+  input:focus,select:focus{outline:2px solid var(--green); outline-offset:-1px}
+  .chips{display:flex; flex-wrap:wrap; gap:8px}
+  .chip{padding:10px 14px; font-size:13.5px; font-family:inherit; color:var(--ink);
+    border:1px solid var(--line); border-radius:999px; background:var(--paper); cursor:pointer}
+  .chip.on{background:var(--green); color:#fff; border-color:var(--green); font-weight:700}
+  .chip.on.out{background:var(--liq); border-color:var(--liq)}
+  .btn{width:100%; padding:14px; font-size:15px; font-weight:700; letter-spacing:.1em;
+    border:none; border-radius:11px; background:var(--green); color:#fff; font-family:inherit; cursor:pointer}
+  .btn:active{opacity:.85}
+  .btn.ghost{background:var(--card); color:var(--green); border:1.5px solid var(--green)}
+  .btn.small{padding:11px; font-size:13.5px}
+  .btnrow{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+
+  table{width:100%; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums}
+  th{font-size:10px; color:var(--mute); font-weight:700; text-align:right; padding:6px 4px; border-bottom:1.5px solid var(--green)}
+  th:first-child{text-align:left}
+  td{padding:7px 4px; text-align:right; border-bottom:1px dashed var(--line)}
+  td:first-child{text-align:left; font-weight:700}
+  .zan{color:var(--green); font-weight:700}
+  .neg{color:var(--liq); font-weight:700}
+  .log-item{display:flex; align-items:center; gap:8px; padding:9px 2px; border-bottom:1px solid var(--line); font-size:12.5px}
+  .log-item:last-child{border-bottom:none}
+  .tag{font-size:10px; padding:2px 8px; border-radius:999px; font-weight:700}
+  .t-in{background:var(--green-soft); color:var(--green)}
+  .t-out{background:var(--liq-soft); color:var(--liq)}
+  .log-del{background:none; border:none; color:#c6c2ba; font-size:18px; padding:4px 8px; cursor:pointer}
+  .diff-ok{background:var(--green-soft); border-radius:10px; padding:10px 14px; font-size:13px}
+  .diff-ng{background:var(--liq-soft); border-radius:10px; padding:10px 14px; font-size:13px; color:var(--liq); font-weight:700}
+  .hint{font-size:11px; color:var(--mute); line-height:1.7; margin-top:10px}
+  .toast{position:sticky; bottom:16px; margin-top:10px; text-align:center; background:var(--ink); color:#fff;
+    font-size:13px; padding:11px; border-radius:10px; opacity:0; transition:opacity .25s; pointer-events:none}
+  .toast.show{opacity:.94}
+</style>
+</head>
+<body>
+
+<h1>材　料　台　帳</h1>
+<div class="sub">ダイアパレスグランデージ川崎多摩川リバーウィングス｜石井商事</div>
+
+<div class="panel">
+  <h2>記録する</h2>
+  <div class="row">
+    <div><label>日付</label><input type="date" id="inDate"></div>
+    <div><label>数量</label><input type="number" id="inQty" inputmode="decimal" placeholder="10"></div>
+  </div>
+  <div class="row" style="grid-template-columns:1fr">
+    <div><label>区分</label>
+      <div class="chips" id="kubunChips">
+        <button type="button" class="chip on" data-v="搬入">搬入</button>
+        <button type="button" class="chip out" data-v="払出">払出</button>
+        <button type="button" class="chip" data-v="返品">返品</button>
+      </div>
+    </div>
+  </div>
+  <div class="row" style="grid-template-columns:1fr" id="destRow" style="display:none">
+    <div><label>渡し先（払出のとき）</label>
+      <div class="chips" id="destChips">
+        <button type="button" class="chip on" data-v="うち">うち</button>
+        <button type="button" class="chip" data-v="将和">将和</button>
+        <button type="button" class="chip" data-v="撤去">撤去</button>
+        <button type="button" class="chip" data-v="その他">その他</button>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div><label>材料</label>
+      <select id="inMat">
+        <option>MS2500(4L)</option><option>PU9000(4L)</option><option>PS169N(4L)</option>
+        <option>MS2500ｶｰﾄﾘｯｼﾞ</option><option>プライマー</option><option>バッカー20×5</option>
+        <option>マスキング</option><option>ウエス・溶剤</option><option>その他</option>
+      </select>
+    </div>
+    <div><label>単価（任意）</label><input type="number" id="inPrice" inputmode="numeric" placeholder="3500"></div>
+  </div>
+  <div class="row" style="grid-template-columns:1fr">
+    <div><label>メモ（階・部位・受領者など 任意）</label><input type="text" id="inMemo" placeholder="10F廊下 じゅん"></div>
+  </div>
+  <button class="btn" id="addBtn">記録する</button>
+</div>
+
+<div class="panel">
+  <h2>集計（在庫と払出先）</h2>
+  <table id="sumTable"></table>
+  <div class="hint">残＝搬入−払出＋返品。将和は材工共のため、将和への払出は本来ゼロ——発生したら請求・相殺の根拠。</div>
+</div>
+
+<div class="panel">
+  <h2>理論との突合（うち施工分）</h2>
+  <div class="row">
+    <div><label>ロス係数</label><input type="number" id="lossF" step="0.05" value="1.2"></div>
+    <div><label>タイル・打継バッカー</label>
+      <select id="backer"><option value="1">入れる（充填20×10）</option><option value="0">入れない（20×15）</option></select>
+    </div>
+  </div>
+  <div id="theory"></div>
+  <div class="hint">理論値＝断面×m×ロス÷4L。実払出（うち）との差がプラスに膨らむ＝どこかで消えている合図。</div>
+</div>
+
+<div class="panel">
+  <h2>履歴（直近）</h2>
+  <div id="logList"><div class="hint">記録なし</div></div>
+  <div class="btnrow" style="margin-top:12px">
+    <button class="btn ghost small" id="expBtn">バックアップ出力</button>
+    <button class="btn ghost small" id="impBtn">読み込み</button>
+  </div>
+  <input type="file" id="impFile" accept=".json" style="display:none">
+</div>
+
+<div class="toast" id="toast">記録しました</div>
+
+<script>
+(function(){
+  var KEY='kawasaki-zairyo';
+  var MATS=['MS2500(4L)','PU9000(4L)','PS169N(4L)','MS2500ｶｰﾄﾘｯｼﾞ','プライマー','バッカー20×5','マスキング','ウエス・溶剤','その他'];
+  var DESTS=['うち','将和','撤去','その他'];
+  /* うち施工分の理論行：[名称, m, 幅, 深, 材, バッカー対象] */
+  var THEORY=[
+    ['外壁タイル目地（縦）',210,20,15,'MS2500(4L)',true],
+    ['外壁打継目地（横）',1465,20,15,'MS2500(4L)',true],
+    ['手摺内壁目地',178,20,15,'PU9000(4L)',true],
+    ['天井目地',229,20,15,'PU9000(4L)',true],
+    ['AWサッシ廻り',2490,15,10,'MS2500(4L)',false],
+    ['床端末シール',1155,20,10,'MS2500(4L)',false],
+    ['Rサッシ端末',10.5,20,10,'MS2500(4L)',false]
+  ];
+  var log=[];
+  var $=function(id){return document.getElementById(id);};
+
+  function todayStr(){var d=new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function fmt(n){return n.toLocaleString('ja-JP',{maximumFractionDigits:1});}
+  function load(){try{var r=localStorage.getItem(KEY); if(r) log=JSON.parse(r);}catch(e){log=[];}}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(log));}catch(e){}}
+
+  function chipVal(id){var b=document.querySelector('#'+id+' .chip.on'); return b?b.getAttribute('data-v'):'';}
+  function bindChips(id,single){
+    $(id).addEventListener('click',function(ev){
+      var b=ev.target.closest('.chip'); if(!b) return;
+      this.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on');
+      if(id==='kubunChips') $('destRow').style.display=(b.getAttribute('data-v')==='払出')?'grid':'none';
+    });
+  }
+  bindChips('kubunChips'); bindChips('destChips');
+  $('destRow').style.display='none';
+
+  function sum(mat,kubun,dest){
+    var s=0;
+    log.forEach(function(e){
+      if(e.mat!==mat) return;
+      if(e.kubun!==kubun) return;
+      if(dest && e.dest!==dest) return;
+      s+=e.qty;
+    });
+    return s;
+  }
+
+  function render(){
+    /* 集計 */
+    var h='<tr><th>材料</th><th>搬入</th><th>うち</th><th>将和</th><th>撤去</th><th>他</th><th>残</th></tr>';
+    MATS.forEach(function(m){
+      var nyu=sum(m,'搬入')-0, hen=sum(m,'返品');
+      var outs=DESTS.map(function(d){return sum(m,'払出',d);});
+      var total=outs.reduce(function(a,b){return a+b;},0);
+      if(nyu===0&&total===0&&hen===0) return;
+      var zan=nyu-total+hen;
+      h+='<tr><td>'+m+'</td><td>'+fmt(nyu)+'</td>'
+        +outs.map(function(v,i){return '<td'+(i===1&&v>0?' class="neg"':'')+'>'+(v?fmt(v):'—')+'</td>';}).join('')
+        +'<td class="'+(zan<0?'neg':'zan')+'">'+fmt(zan)+'</td></tr>';
+    });
+    $('sumTable').innerHTML=h;
+
+    /* 理論突合 */
+    var loss=parseFloat($('lossF').value)||1.2;
+    var bk=$('backer').value==='1';
+    var need={};
+    THEORY.forEach(function(t){
+      var d=(bk&&t[5])?10:t[3];
+      var L=t[1]*t[2]*d/1000*loss;
+      need[t[4]]=(need[t[4]]||0)+L;
+    });
+    var th='';
+    Object.keys(need).forEach(function(m){
+      var cans=Math.ceil(need[m]/4);
+      var actual=sum(m,'払出','うち');
+      var diff=actual-cans;
+      th+='<div style="margin-bottom:8px"><b style="font-size:12.5px">'+m+'</b>'
+        +'<table><tr><th>理論缶数</th><th>実払出(うち)</th><th>差</th></tr>'
+        +'<tr><td style="text-align:right;font-weight:400">'+cans+'</td><td>'+fmt(actual)+'</td>'
+        +'<td class="'+(diff>0?'neg':'zan')+'">'+(diff>0?'+':'')+fmt(diff)+'</td></tr></table></div>';
+    });
+    $('theory').innerHTML=th;
+
+    /* 履歴 */
+    var list=$('logList');
+    if(log.length===0){list.innerHTML='<div class="hint">記録なし</div>';}
+    else{
+      var lh='';
+      log.slice().reverse().slice(0,30).forEach(function(e){
+        var idx=log.indexOf(e);
+        lh+='<div class="log-item">'
+          +'<span style="color:var(--mute);min-width:38px">'+e.date.slice(5).replace('-','/')+'</span>'
+          +'<span class="tag '+(e.kubun==='払出'?'t-out':'t-in')+'">'+e.kubun+(e.dest?'・'+e.dest:'')+'</span>'
+          +'<span style="flex:1">'+e.mat+(e.memo?'｜<span style="color:var(--mute);font-size:11px">'+e.memo+'</span>':'')+'</span>'
+          +'<span style="font-weight:700">'+fmt(e.qty)+'</span>'
+          +'<button class="log-del" data-i="'+idx+'">×</button></div>';
+      });
+      list.innerHTML=lh;
+      list.querySelectorAll('.log-del').forEach(function(b){
+        b.addEventListener('click',function(){
+          log.splice(parseInt(this.getAttribute('data-i'),10),1); save(); render();
+        });
+      });
+    }
+  }
+
+  function toast(msg){var t=$('toast'); t.textContent=msg; t.classList.add('show');
+    setTimeout(function(){t.classList.remove('show');},1500);}
+
+  $('addBtn').addEventListener('click',function(){
+    var qty=parseFloat($('inQty').value);
+    if(isNaN(qty)||qty<=0){$('inQty').focus();return;}
+    var kubun=chipVal('kubunChips');
+    var e={date:$('inDate').value||todayStr(), kubun:kubun,
+      dest:kubun==='払出'?chipVal('destChips'):'',
+      mat:$('inMat').value, qty:qty,
+      price:parseFloat($('inPrice').value)||0,
+      memo:$('inMemo').value.trim()};
+    log.push(e); save(); render();
+    $('inQty').value=''; $('inMemo').value='';
+    toast('記録しました');
+  });
+
+  $('lossF').addEventListener('change',render);
+  $('backer').addEventListener('change',render);
+
+  $('expBtn').addEventListener('click',function(){
+    var blob=new Blob([JSON.stringify(log)],{type:'application/json'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='zairyo_'+todayStr()+'.json';
+    a.click(); toast('バックアップを出力しました');
+  });
+  $('impBtn').addEventListener('click',function(){$('impFile').click();});
+  $('impFile').addEventListener('change',function(){
+    var f=this.files[0]; if(!f) return;
+    var r=new FileReader();
+    r.onload=function(){
+      try{var d=JSON.parse(r.result);
+        if(Array.isArray(d)){log=d; save(); render(); toast('読み込みました');}
+      }catch(e){toast('読み込み失敗');}
+    };
+    r.readAsText(f);
+  });
+
+  $('inDate').value=todayStr();
+  load(); render();
+})();
+</script>
+</body>
+</html>
