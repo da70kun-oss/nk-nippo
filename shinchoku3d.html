@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>川崎｜進捗</title>
+<style>
+  :root{--ink:#22282c;--paper:#f4f3ef;--card:#fff;--line:#ddd9d1;--green:#4f6f5e;
+    --mute:#83878a;--sumi:#b9b4aa;--amber:#c99a4b}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+    background:var(--paper);color:var(--ink);overflow:hidden}
+  .page{position:fixed;inset:0 0 62px 0;overflow-y:auto;display:none;padding:16px 14px 24px}
+  .page.on{display:block}
+  #pg-zumen{padding:0;overflow:hidden}
+  h1{font-size:14px;font-weight:700;letter-spacing:.1em}
+  .sub{font-size:10.5px;color:var(--mute);margin-bottom:10px}
+  .tabs{position:fixed;left:0;right:0;bottom:0;height:62px;display:flex;
+    background:var(--card);border-top:1px solid var(--line)}
+  .tab{flex:1;border:none;background:none;font-family:inherit;font-size:12px;
+    font-weight:700;letter-spacing:.06em;color:var(--mute);cursor:pointer}
+  .tab.on{color:var(--green)}
+  .tab .dot{display:block;width:5px;height:5px;border-radius:50%;margin:4px auto 0;background:transparent}
+  .tab.on .dot{background:var(--green)}
+  .hud{position:fixed;left:14px;top:12px;pointer-events:none;z-index:2}
+  .chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;
+    -webkit-overflow-scrolling:touch}
+  .chip{flex:none;padding:9px 13px;font-size:12.5px;font-family:inherit;color:var(--ink);
+    border:1px solid var(--line);border-radius:999px;background:var(--card);cursor:pointer}
+  .chip.on{background:var(--green);color:#fff;border-color:var(--green);font-weight:700}
+  .mode{display:flex;gap:8px;margin-bottom:10px}
+  .mbtn{flex:1;padding:11px;font-size:13.5px;font-weight:700;font-family:inherit;
+    border:1.5px solid var(--line);border-radius:11px;background:var(--card);color:var(--mute);cursor:pointer}
+  .mbtn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .legend{display:flex;gap:12px;font-size:10.5px;color:var(--mute);margin-bottom:10px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;
+    vertical-align:-1px;border:1px solid var(--line)}
+  .floor{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .fl{width:34px;font-size:11px;font-weight:700;color:var(--mute);text-align:right;flex:none}
+  .cells{display:flex;gap:5px;flex:1}
+  .cell{flex:1;height:36px;border-radius:8px;border:1px solid var(--line);
+    background:var(--card);cursor:pointer;font-size:10.5px;font-weight:700;
+    color:var(--mute);font-family:inherit}
+  .cell.on{color:#fff}
+  .badge{position:fixed;right:12px;top:12px;z-index:5;font-size:11px;font-weight:700;
+    letter-spacing:.06em;padding:7px 13px;border-radius:999px;background:var(--card);
+    border:1px solid var(--line);color:var(--mute)}
+  .badge.edit{background:var(--green);color:#fff;border-color:var(--green)}
+</style>
+</head>
+<body>
+
+<div class="badge" id="badge">閲覧モード</div>
+<div class="page on" id="pg-zumen">
+  <div class="hud"><h1>図　面</h1><div class="sub">打込済＝緑・一部＝橙・撤去済のみ＝薄墨</div></div>
+  <div id="wrap"></div>
+</div>
+
+<div class="page" id="pg-s"></div>
+<div class="page" id="pg-e"></div>
+<div class="page" id="pg-w"></div>
+<div class="page" id="pg-n"></div>
+
+<div class="tabs">
+  <button class="tab on" data-p="zumen">図面<span class="dot"></span></button>
+  <button class="tab" data-p="s">南<span class="dot"></span></button>
+  <button class="tab" data-p="e">東<span class="dot"></span></button>
+  <button class="tab" data-p="w">西<span class="dot"></span></button>
+  <button class="tab" data-p="n">廊下<span class="dot"></span></button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  // ===== Firebase設定：コンソール→プロジェクトの設定→マイアプリ→構成 をここに貼る =====
+  var firebaseConfig={
+    apiKey:"AIzaSyAv2lpFT0J3JXG9DRaV4u-QA-D3JOKnCXo",
+    authDomain:"sealing-sample1.firebaseapp.com",
+    projectId:"sealing-sample1",
+    storageBucket:"sealing-sample1.firebasestorage.app",
+    messagingSenderId:"161111837544",
+    appId:"1:161111837544:web:b4f06b692369a0f153e4dd"
+  };
+  // 編集キー：URLが「…html#key=あいことば」の時だけ編集可（キー自体の照合はFirestoreルール側）
+  var EDIT_KEY=(location.hash.match(/key=([^&]+)/)||[])[1]||'';
+  var canEdit=!!EDIT_KEY;
+  var badge=null;
+
+  var KEY='kawasaki-face2';
+  var rec={};
+  try{rec=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){}
+
+  var db=null, docRef=null, pushTimer=null, applying=false;
+  if(firebaseConfig.apiKey){
+    firebase.initializeApp(firebaseConfig);
+    db=firebase.firestore();
+    docRef=db.collection('kawasaki').doc('shinchoku');
+    docRef.onSnapshot(function(snap){
+      var d=snap.data();
+      if(!d||!d.rec) return;
+      applying=true;
+      rec=d.rec;
+      try{localStorage.setItem(KEY,JSON.stringify(rec));}catch(e){}
+      if(window.__redrawAll) window.__redrawAll();
+      applying=false;
+    });
+  }
+  function save(){
+    try{localStorage.setItem(KEY,JSON.stringify(rec));}catch(e){}
+    if(docRef&&canEdit&&!applying){
+      clearTimeout(pushTimer);
+      pushTimer=setTimeout(function(){
+        docRef.set({rec:rec,k:EDIT_KEY,t:Date.now()}).catch(function(){
+          if(badge){badge.textContent='編集権限なし';badge.classList.remove('edit');}
+        });
+      },400);
+    }
+  }
+  function bag(face,part,mode){var k=face+'_'+part+'_'+mode; rec[k]=rec[k]||{}; return rec[k];}
+
+  var ALL=[],F212=[],F1315=[15,14,13];
+  for(var ff=15;ff>=2;ff--){ALL.push(ff); if(ff<=12)F212.push(ff);}
+  function roomsOf(f){return f>=15?2:f>=13?6:8;}
+  function lab(f){return f===14?'14F　L型バルコニー':f+'F　ルーフバルコニー';}
+
+  // 妻面の並び（南角→サッシ2枚→SB→サッシ→廊下側角）＋横目地（各階上下2本）＋上部（13〜15F）
+  var TSUMA=[
+    {n:'出窓（南側）',fl:F212},
+    {n:'出窓（中央）',fl:F212},
+    {n:'SB 掃き出しサッシ',fl:F212},
+    {n:'SB 目地（有無未確認）',fl:F212},
+    {n:'横目地（上下2本）',fl:F212},
+    {n:'ルーフ・L型（13〜15F）',fl:F1315,special:1}
+  ];
+  var FACES={
+    s:{title:'バルコニー面（南）',kind:'rooms',
+       parts:[{n:'バルコニー',fl:ALL},{n:'サッシ',fl:ALL},{n:'天井',fl:ALL},
+              {n:'目地',fl:ALL},{n:'ウレタン目地',fl:ALL},{n:'外壁',fl:ALL}]},
+    e:{title:'妻面（東）',kind:'floor',parts:TSUMA},
+    w:{title:'妻面（西）',kind:'floor',parts:TSUMA},
+    n:{title:'廊下面（北）',kind:'floor',
+       parts:[{n:'サッシ廻り',fl:ALL},{n:'建具・MB',fl:ALL},
+              {n:'設備廻り',fl:ALL},{n:'タイル目地',fl:ALL}]}
+  };
+  var state={s:{part:0,mode:'u'},e:{part:0,mode:'u'},w:{part:0,mode:'u'},n:{part:0,mode:'u'}};
+
+  Object.keys(FACES).forEach(function(face){
+    var cfg=FACES[face], pg=document.getElementById('pg-'+face);
+    var chips='';
+    cfg.parts.forEach(function(p,i){
+      chips+='<button class="chip'+(i===0?' on':'')+'" data-i="'+i+'">'+p.n+'</button>';
+    });
+    pg.innerHTML='<h1>'+cfg.title+'</h1>'
+      +'<div class="sub">①部位 ②撤去/打込み ③終わった所をタップ</div>'
+      +'<div class="chips">'+chips+'</div>'
+      +'<div class="mode"><button class="mbtn" data-m="t">撤去</button>'
+      +'<button class="mbtn on" data-m="u">打込み</button></div>'
+      +'<div class="legend"><span><i style="background:var(--card)"></i>未</span>'
+      +'<span><i style="background:var(--sumi)"></i>撤去済</span>'
+      +'<span><i style="background:var(--green)"></i>打込済</span></div>'
+      +'<div class="grid"></div>';
+
+    pg.querySelector('.chips').addEventListener('click',function(ev){
+      var b=ev.target.closest('.chip'); if(!b)return;
+      this.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on'); state[face].part=parseInt(b.getAttribute('data-i'),10);
+      draw(face);
+    });
+    pg.querySelector('.mode').addEventListener('click',function(ev){
+      var b=ev.target.closest('.mbtn'); if(!b)return;
+      this.querySelectorAll('.mbtn').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on'); state[face].mode=b.getAttribute('data-m');
+      draw(face);
+    });
+    pg.querySelector('.grid').addEventListener('click',function(ev){
+      if(!canEdit) return;
+      var b=ev.target.closest('.cell'); if(!b)return;
+      var st=state[face], part=cfg.parts[st.part];
+      var done=bag(face,part.n,st.mode), id=b.getAttribute('data-id');
+      if(done[id]) delete done[id]; else done[id]=1;
+      save(); draw(face); paint();
+    });
+  });
+
+  function draw(face){
+    var cfg=FACES[face], st=state[face], part=cfg.parts[st.part];
+    var done=bag(face,part.n,st.mode);
+    var col=st.mode==='t'?'var(--sumi)':'var(--green)';
+    var h='';
+    part.fl.forEach(function(f){
+      var cells='';
+      if(cfg.kind==='rooms'){
+        for(var r=1;r<=roomsOf(f);r++){
+          var id=f+'-'+r, on=done[id]?1:0;
+          cells+='<button class="cell'+(on?' on':'')+'" data-id="'+id+'"'
+            +(on?' style="background:'+col+';border-color:'+col+'"':'')
+            +'>'+f+'0'+r+'</button>';
+        }
+      }else{
+        var id2=''+f, on2=done[id2]?1:0;
+        var txt=part.special?lab(f):f+'F';
+        cells='<button class="cell'+(on2?' on':'')+'" data-id="'+id2+'"'
+          +(on2?' style="background:'+col+';border-color:'+col+'"':'')
+          +'>'+txt+'</button>';
+      }
+      h+='<div class="floor"><span class="fl">'+f+'F</span><div class="cells">'+cells+'</div></div>';
+    });
+    document.querySelector('#pg-'+face+' .grid').innerHTML=h;
+  }
+  Object.keys(FACES).forEach(draw);
+
+  var curPage='zumen';
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click',function(){
+      curPage=this.getAttribute('data-p');
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on');});
+      this.classList.add('on');
+      document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
+      document.getElementById('pg-'+curPage).classList.add('on');
+    });
+  });
+
+  // ===== 3D =====
+  var W=window.innerWidth,H=window.innerHeight-62;
+  var scene=new THREE.Scene(); scene.background=new THREE.Color(0xf4f3ef);
+  var camera=new THREE.PerspectiveCamera(45,W/H,0.1,1000);
+  var renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(W,H);
+  document.getElementById('wrap').appendChild(renderer.domElement);
+  scene.add(new THREE.AmbientLight(0xffffff,0.8));
+  var sun=new THREE.DirectionalLight(0xfff8ec,0.55); sun.position.set(60,90,40); scene.add(sun);
+  var ground=new THREE.Mesh(new THREE.CircleGeometry(160,48),new THREE.MeshLambertMaterial({color:0xe9e7e0}));
+  ground.rotation.x=-Math.PI/2; scene.add(ground);
+
+  var RW=6.4,D=12,FH=3,totalW=8*RW;
+  var GRAY=0xdedbd3, GREEN=0x4f6f5e, AMBER=0xc99a4b, SUMI=0xb9b4aa;
+  var bldg=new THREE.Group(); scene.add(bldg);
+  var WHITE=0xf2f1ec, JOINT=0x74787c;
+  function box(w,h,d,x,y,z,base){
+    var c=(base===undefined)?GRAY:base;
+    var m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshLambertMaterial({color:c}));
+    m.userData.base=c;
+    m.position.set(x,y,z); bldg.add(m); return m;
+  }
+  var M={s:{},e:{},w:{},n:{}};
+  function reg(face,part,f,m){
+    M[face][part]=M[face][part]||{}; M[face][part][f]=M[face][part][f]||[];
+    M[face][part][f].push(m);
+  }
+  var base=new THREE.Mesh(new THREE.BoxGeometry(totalW,FH,D),new THREE.MeshLambertMaterial({color:0xd2cfc7}));
+  base.position.set(0,FH/2,0); bldg.add(base);
+
+  ALL.forEach(function(f){
+    var w=roomsOf(f)*RW, y=(f-1)*FH+FH/2;
+    reg('s','外壁',f, box(w,FH,D,0,y,0));
+    reg('s','バルコニー',f, box(w,FH*0.42,0.5,0,y-FH*0.22,D/2+0.3));
+    reg('s','サッシ',f, box(w*0.94,FH*0.4,0.12,0,y+FH*0.2,D/2+0.07,WHITE));
+    reg('s','天井',f, box(w,0.16,1.4,0,y+FH/2-0.08,D/2+0.7));
+    for(var k=1;k<roomsOf(f);k++) reg('s','目地',f, box(0.14,FH,0.1,-w/2+RW*k,y,D/2+0.02,JOINT));
+    reg('s','ウレタン目地',f, box(w,0.14,0.56,0,y,D/2+0.31,JOINT));
+    reg('n','サッシ廻り',f, box(w,FH*0.34,0.12,0,y+FH*0.18,-(D/2+0.07),WHITE));
+    reg('n','建具・MB',f, box(w*0.6,FH*0.42,0.12,0,y-FH*0.2,-(D/2+0.07)));
+    reg('n','設備廻り',f, box(w*0.25,FH*0.2,0.12,w*0.3,y,-(D/2+0.07)));
+    reg('n','タイル目地',f, box(w,0.14,0.12,0,y-FH/2+0.1,-(D/2+0.07),JOINT));
+
+    // 妻面（2F〜12F・両妻で鏡映し）：南角→サッシ2枚→SB→サッシ→廊下側角
+    if(f<=12){
+      [['e',1],['w',-1]].forEach(function(a){
+        var face=a[0], sgn=a[1], gx=sgn*(w/2+0.10);
+        // 妻面（単純化）：平らな壁に 窓・窓・SB を順に並べるだけ。曲面なし
+        reg(face,'出窓（南側）',f,        box(0.3,FH*0.6,1.6, sgn*(w/2+0.16), y, 3.6, WHITE));
+        reg(face,'出窓（中央）',f,        box(0.3,FH*0.6,1.6, sgn*(w/2+0.16), y, 0.8, WHITE));
+        reg(face,'SB 掃き出しサッシ',f,   box(0.3,FH*0.72,1.6, sgn*(w/2+0.16), y-FH*0.05, -2.0, WHITE));
+        reg(face,'SB 目地（有無未確認）',f, box(0.18,FH*0.5,0.14, sgn*(w/2+0.12), y, -3.2, JOINT));
+        box(0.28,FH*0.6,1.4, sgn*(w/2+0.15), y, -D/2+1.1, 0xefede7);   // 廊下寄り窓＝範囲外
+        reg(face,'横目地（上下2本）',f, box(0.16,0.14,D*0.72, gx, y-FH/2+0.22, 0.4, JOINT));
+        reg(face,'横目地（上下2本）',f, box(0.16,0.14,D*0.72, gx, y+FH/2-0.22, 0.4, JOINT));
+      });
+    }
+  });
+  // 上部（両妻）：13Fルーフ／14F L型／15Fルーフ（部屋数：15F=2・14F/13F=6・12F以下=8）
+  [['e',1],['w',-1]].forEach(function(a){
+    var face=a[0], sgn=a[1];
+    var e12=8*RW/2, e13=6*RW/2, e15=2*RW/2;
+    reg(face,'ルーフ・L型（13〜15F）',13,
+      box(Math.max(e12-e13-0.4,0.5),FH*0.36,D,sgn*((e12+e13)/2),12*FH+FH*0.18,0));
+    reg(face,'ルーフ・L型（13〜15F）',14,
+      box(0.5,FH*0.36,D*0.7,sgn*(e13-0.3),13*FH+FH*0.18,D*0.1));
+    reg(face,'ルーフ・L型（13〜15F）',15,
+      box(Math.max(e13-e15-0.4,0.5),FH*0.36,D,sgn*((e13+e15)/2),14*FH+FH*0.18,0));
+  });
+
+  function paint(){
+    Object.keys(FACES).forEach(function(face){
+      var cfg=FACES[face];
+      cfg.parts.forEach(function(part){
+        var du=bag(face,part.n,'u'), dt=bag(face,part.n,'t');
+        part.fl.forEach(function(f){
+          var meshes=(M[face][part.n]||{})[f]; if(!meshes)return;
+          var tot,uc,tc;
+          if(cfg.kind==='rooms'){
+            tot=roomsOf(f); uc=0; tc=0;
+            for(var r=1;r<=tot;r++){var id=f+'-'+r; if(du[id])uc++; if(dt[id])tc++;}
+          }else{tot=1; uc=du[''+f]?1:0; tc=dt[''+f]?1:0;}
+          meshes.forEach(function(m){
+            var c = uc>=tot?GREEN : uc>0?AMBER : tc>=tot?SUMI : (m.userData.base!==undefined?m.userData.base:GRAY);
+            m.material.color.setHex(c);
+          });
+        });
+      });
+    });
+  }
+  paint();
+  window.__redrawAll=function(){Object.keys(FACES).forEach(draw);paint();};
+  badge=document.getElementById('badge');
+  if(canEdit){badge.textContent='編集モード';badge.classList.add('edit');}
+
+  var target=new THREE.Vector3(0,22,0),theta=0.9,phi=1.15,dist=100,spin=true;
+  function updateCam(){
+    phi=Math.max(0.25,Math.min(1.45,phi)); dist=Math.max(35,Math.min(220,dist));
+    camera.position.set(target.x+dist*Math.sin(phi)*Math.sin(theta),
+      target.y+dist*Math.cos(phi),target.z+dist*Math.sin(phi)*Math.cos(theta));
+    camera.lookAt(target);
+  }
+  var dragging=false,px=0,py=0,pinch=0,el=renderer.domElement;
+  el.addEventListener('pointerdown',function(e){dragging=true;spin=false;px=e.clientX;py=e.clientY;});
+  window.addEventListener('pointermove',function(e){
+    if(!dragging)return;
+    theta-=(e.clientX-px)*0.006; phi-=(e.clientY-py)*0.004; px=e.clientX;py=e.clientY;});
+  window.addEventListener('pointerup',function(){dragging=false;});
+  el.addEventListener('wheel',function(e){e.preventDefault();dist*=(1+e.deltaY*0.001);},{passive:false});
+  el.addEventListener('touchstart',function(e){
+    if(e.touches.length===2)pinch=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+  },{passive:true});
+  el.addEventListener('touchmove',function(e){
+    if(e.touches.length===2){
+      var d2=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      if(pinch>0)dist*=pinch/d2; pinch=d2;}
+  },{passive:true});
+  window.addEventListener('resize',function(){
+    W=window.innerWidth;H=window.innerHeight-62;
+    camera.aspect=W/H;camera.updateProjectionMatrix();renderer.setSize(W,H);});
+  (function loop(){requestAnimationFrame(loop);
+    if(curPage==='zumen'){if(spin)theta+=0.003;updateCam();renderer.render(scene,camera);}})();
+})();
+</script>
+</body>
+</html>
