@@ -208,7 +208,7 @@
        parts:[{n:'サッシ廻り',fl:ALL},{n:'建具・MB',fl:ALL},
               {n:'設備廻り',fl:ALL},{n:'タイル目地',fl:ALL}]}
   };
-  var state={s:{part:0,mode:'u'},e:{part:0,mode:'u'},w:{part:0,mode:'u'},n:{part:0,mode:'u'}};
+  var state={s:{parts:[0],mode:'u'},e:{parts:[0],mode:'u'},w:{parts:[0],mode:'u'},n:{parts:[0],mode:'u'}};
 
   Object.keys(FACES).forEach(function(face){
     var cfg=FACES[face], pg=document.getElementById('pg-'+face);
@@ -217,7 +217,7 @@
       chips+='<button class="chip'+(i===0?' on':'')+'" data-i="'+i+'">'+p.n+'</button>';
     });
     pg.innerHTML='<h1>'+cfg.title+'</h1>'
-      +'<div class="sub">①部位 ②撤去/打込み ③終わった所をタップ</div>'
+      +'<div class="sub">①部位（複数可）②撤去/打込み ③終わった所をタップ</div>'
       +'<div class="chips">'+chips+'</div>'
       +'<div class="mode"><button class="mbtn" data-m="t">撤去</button>'
       +'<button class="mbtn on" data-m="u">打込み</button></div>'
@@ -228,8 +228,10 @@
 
     pg.querySelector('.chips').addEventListener('click',function(ev){
       var b=ev.target.closest('.chip'); if(!b)return;
-      this.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on');});
-      b.classList.add('on'); state[face].part=parseInt(b.getAttribute('data-i'),10);
+      var i=parseInt(b.getAttribute('data-i'),10), arr=state[face].parts;
+      var at=arr.indexOf(i);
+      if(at>=0){ if(arr.length>1){arr.splice(at,1); b.classList.remove('on');} }
+      else { arr.push(i); b.classList.add('on'); }
       draw(face);
     });
     pg.querySelector('.mode').addEventListener('click',function(ev){
@@ -241,30 +243,39 @@
     pg.querySelector('.grid').addEventListener('click',function(ev){
       if(!canEdit) return;
       var b=ev.target.closest('.cell'); if(!b)return;
-      var st=state[face], part=cfg.parts[st.part];
-      var done=bag(face,part.n,st.mode), id=b.getAttribute('data-id');
-      if(done[id]) delete done[id]; else done[id]=1;
+      var st=state[face], id=b.getAttribute('data-id');
+      // 先頭部位の状態を基準にトグル→選択中の全部位を揃える
+      var lead=cfg.parts[st.parts[0]], leadBag=bag(face,lead.n,st.mode);
+      var turnOn=!leadBag[id];
+      st.parts.forEach(function(pi){
+        var part=cfg.parts[pi]; if(!part) return;
+        var done=bag(face,part.n,st.mode);
+        if(turnOn) done[id]=1; else delete done[id];
+      });
       save(); draw(face); paint();
     });
   });
 
   function draw(face){
-    var cfg=FACES[face], st=state[face], part=cfg.parts[st.part];
-    var done=bag(face,part.n,st.mode);
+    var cfg=FACES[face], st=state[face];
     var col=st.mode==='t'?'var(--sumi)':'var(--green)';
+    // 選択中の全部位に共通する階集合（複数部位でfl範囲が違う場合は先頭部位のflを使う）
+    var lead=cfg.parts[st.parts[0]];
+    var bags=st.parts.map(function(pi){return bag(face,cfg.parts[pi].n,st.mode);});
+    function allOn(id){return bags.every(function(bg){return !!bg[id];});}
     var h='';
-    part.fl.forEach(function(f){
+    lead.fl.forEach(function(f){
       var cells='';
       if(cfg.kind==='rooms'){
         for(var r=1;r<=roomsOf(f);r++){
-          var id=f+'-'+r, on=done[id]?1:0;
+          var id=f+'-'+r, on=allOn(id)?1:0;
           cells+='<button class="cell'+(on?' on':'')+'" data-id="'+id+'"'
             +(on?' style="background:'+col+';border-color:'+col+'"':'')
             +'>'+f+'0'+r+'</button>';
         }
       }else{
-        var id2=''+f, on2=done[id2]?1:0;
-        var txt=part.special?lab(f):f+'F';
+        var id2=''+f, on2=allOn(id2)?1:0;
+        var txt=lead.special?lab(f):f+'F';
         cells='<button class="cell'+(on2?' on':'')+'" data-id="'+id2+'"'
           +(on2?' style="background:'+col+';border-color:'+col+'"':'')
           +'>'+txt+'</button>';
