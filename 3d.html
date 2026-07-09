@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>3D｜川崎リバーウィングス</title>
+<style>
+  :root{--ink:#22282c;--paper:#f4f3ef;--card:#fff;--line:#ddd9d1;--green:#4f6f5e;--mute:#83878a}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden}
+  body{font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;background:var(--paper);color:var(--ink)}
+  #wrap{position:fixed;inset:0}
+  canvas{display:block}
+  .hud{position:fixed;left:14px;top:14px;pointer-events:none}
+  .hud h1{font-size:14px;font-weight:700;letter-spacing:.1em}
+  .hud .sub{font-size:10px;color:var(--mute);margin-top:2px}
+  .btns{position:fixed;right:14px;top:14px;display:flex;gap:8px}
+  .btn{padding:9px 14px;font-size:12px;font-weight:700;letter-spacing:.06em;font-family:inherit;
+    border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);cursor:pointer}
+  .btn.on{background:var(--green);color:#fff;border-color:var(--green)}
+  .hint{position:fixed;left:0;right:0;bottom:14px;text-align:center;font-size:10px;color:var(--mute);pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wrap"></div>
+<div class="hud">
+  <h1>川崎リバーウィングス</h1>
+  <div class="sub">部屋割 8→6・6→2（朱線）＝<b style="color:#a5402f">未確認・現場照合待ち</b>｜ドラッグで回転</div>
+</div>
+<div class="btns">
+  <button class="btn" id="zoneBtn">工区</button>
+  <button class="btn on" id="spinBtn">回転</button>
+</div>
+<div class="hint">確定：15F・1F非住戸・三分節・妻側フラット＋SB（2F〜12F）・③北側除外｜仮（朱線）：部屋割 12F以下=8・14/13F=6・15F=2。現場で数えて確定させる</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  var W=window.innerWidth,H=window.innerHeight;
+  var scene=new THREE.Scene();
+  scene.background=new THREE.Color(0xf4f3ef);
+  scene.fog=new THREE.Fog(0xf4f3ef,140,320);
+
+  var camera=new THREE.PerspectiveCamera(45,W/H,0.1,1000);
+  var renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(W,H);
+  document.getElementById('wrap').appendChild(renderer.domElement);
+
+  // 光
+  scene.add(new THREE.AmbientLight(0xffffff,0.75));
+  var sun=new THREE.DirectionalLight(0xfff8ec,0.65);
+  sun.position.set(60,90,40); scene.add(sun);
+
+  // 地面
+  var ground=new THREE.Mesh(
+    new THREE.CircleGeometry(160,48),
+    new THREE.MeshLambertMaterial({color:0xe9e7e0})
+  );
+  ground.rotation.x=-Math.PI/2; scene.add(ground);
+
+  // ===== 建物（実データ：階×部屋数） =====
+  var RW=6.4, D=12, FH=3;            // 部屋幅・奥行・階高
+  var FLOORS=[];                      // 住戸階は2F〜15F（1Fは非住戸）
+  for(var f=2;f<=15;f++){
+    var rooms = f>=15?2 : f>=13?6 : 8;   // 15F=2／14F・13F=6／12F以下=8（7/9訂正・要現場照合）
+    FLOORS.push({f:f,rooms:rooms});
+  }
+  var matBody1=new THREE.MeshLambertMaterial({color:0xe6e3db}); // 生成り
+  var matBody2=new THREE.MeshLambertMaterial({color:0xd8d5cc});
+  var matDark=new THREE.MeshLambertMaterial({color:0x8b8f92});  // 濃灰帯（バルコニー手摺）
+  var matZone1=new THREE.MeshLambertMaterial({color:0xcfe0d5}); // 1工区（緑がかり）
+  var matZone2=new THREE.MeshLambertMaterial({color:0xe6e3db});
+  var edgeMat=new THREE.LineBasicMaterial({color:0x22282c,transparent:true,opacity:0.25});
+
+  var bldg=new THREE.Group();
+  var zoneParts=[];   // 工区色替え対象 [{mesh, zone1frac}]
+  var totalW=8*RW;
+
+  FLOORS.forEach(function(fl,i){
+    var w=fl.rooms*RW, y=(fl.f-1)*FH+FH/2;
+    var box=new THREE.Mesh(new THREE.BoxGeometry(w,FH,D), matBody1.clone());
+    box.position.set(0,y,0);
+    bldg.add(box);
+    zoneParts.push({mesh:box, w:w});
+    // 枠線
+    var eg=new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry),edgeMat);
+    eg.position.copy(box.position); bldg.add(eg);
+    // バルコニー手摺帯（2F以上・川側=+Z）
+    if(fl.f>=2){
+      var rail=new THREE.Mesh(new THREE.BoxGeometry(w,FH*0.42,0.5),matDark);
+      rail.position.set(0,y-FH*0.22,D/2+0.3);
+      bldg.add(rail);
+      // 部屋割線（数えられるように。割り自体は未確認＝仮）
+      var pts=[];
+      for(var k=1;k<fl.rooms;k++){
+        var x=-w/2+RW*k;
+        pts.push(new THREE.Vector3(x,y-FH/2,D/2+0.62));
+        pts.push(new THREE.Vector3(x,y+FH/2,D/2+0.62));
+      }
+      if(pts.length){
+        var dg=new THREE.BufferGeometry().setFromPoints(pts);
+        bldg.add(new THREE.LineSegments(dg,new THREE.LineBasicMaterial({color:0xa5402f,transparent:true,opacity:0.55})));
+      }
+    }
+  });
+
+  // 中央棟の北側張り出し（航空写真より・全高）
+  var annexW=RW*2.6, annexD=D*0.7;
+  var annex=new THREE.Mesh(new THREE.BoxGeometry(annexW,15*FH,annexD),matBody1.clone());
+  annex.position.set(0,15*FH/2,-(D/2+annexD/2)+0.01);
+  bldg.add(annex);
+  var axe=new THREE.LineSegments(new THREE.EdgesGeometry(annex.geometry),edgeMat);
+  axe.position.copy(annex.position); bldg.add(axe);
+  // 塔屋（中央棟屋上・実在）
+  var toya=new THREE.Mesh(new THREE.BoxGeometry(RW*1.6,2.4,D*0.5),matDark);
+  toya.position.set(0,15*FH+1.2,-D*0.15); bldg.add(toya);
+
+  // 妻側＝フラット。サービスバルコニー（SB）を各階に付ける（2F〜12F）
+  [1,-1].forEach(function(sgn){
+    for(var gf=2;gf<=12;gf++){
+      var gy=(gf-1)*FH+FH/2-FH*0.22;
+      var sb=new THREE.Mesh(new THREE.BoxGeometry(0.7,FH*0.42,2.4),matDark);
+      sb.position.set(sgn*(totalW/2+0.35), gy, 0);
+      bldg.add(sb);
+    }
+  });
+  // 1F（非住戸・共用部）：同フットプリントの無地台座
+  var f1=new THREE.Mesh(new THREE.BoxGeometry(8*RW,FH,D),matBody2);
+  f1.position.set(0,FH/2,0); bldg.add(f1);
+  var f1e=new THREE.LineSegments(new THREE.EdgesGeometry(f1.geometry),edgeMat);
+  f1e.position.copy(f1.position); bldg.add(f1e);
+
+  bldg.position.y=0;
+  scene.add(bldg);
+
+  // ===== 工区表示（元請図：①＝左翼＋左妻／②＝右翼＋右妻／③北側除外） =====
+  // 工区ハイライト：①左（緑）／②右（橙）を半透明の被せ箱で
+  var zone1Meshes=[], zone2Meshes=[];
+  var mZ1=new THREE.MeshLambertMaterial({color:0x4f6f5e,transparent:true,opacity:0.25});
+  var mZ2=new THREE.MeshLambertMaterial({color:0xb07a3c,transparent:true,opacity:0.25});
+  FLOORS.forEach(function(fl){
+    var w=fl.rooms*RW, y=(fl.f-1)*FH+FH/2;
+    var L=new THREE.Mesh(new THREE.BoxGeometry(w/2+0.15,FH+0.1,D+0.7),mZ1);
+    L.position.set(-w/4,y,0); L.visible=false; bldg.add(L); zone1Meshes.push(L);
+    var R=new THREE.Mesh(new THREE.BoxGeometry(w/2+0.15,FH+0.1,D+0.7),mZ2);
+    R.position.set(w/4,y,0); R.visible=false; bldg.add(R); zone2Meshes.push(R);
+  });
+  // 妻角のハイライト（①＝左妻角／②＝右妻角）
+  var zoneMode=0; // 0:OFF 1:①左 2:②右
+  var zoneBtn=document.getElementById('zoneBtn');
+  zoneBtn.addEventListener('click',function(){
+    zoneMode=(zoneMode+1)%3;
+    zone1Meshes.forEach(function(m){m.visible=(zoneMode===1);});
+    zone2Meshes.forEach(function(m){m.visible=(zoneMode===2);});
+    this.textContent = zoneMode===1?'①工区':zoneMode===2?'②工区':'工区';
+    this.classList.toggle('on',zoneMode!==0);
+  });
+
+  // ===== カメラ操作（自作オービット） =====
+  var target=new THREE.Vector3(0,22,0);
+  var theta=0.9, phi=1.15, dist=95;
+  var spin=true;
+  function updateCam(){
+    phi=Math.max(0.25,Math.min(1.45,phi));
+    dist=Math.max(35,Math.min(220,dist));
+    camera.position.set(
+      target.x+dist*Math.sin(phi)*Math.sin(theta),
+      target.y+dist*Math.cos(phi),
+      target.z+dist*Math.sin(phi)*Math.cos(theta)
+    );
+    camera.lookAt(target);
+  }
+
+  var dragging=false,px=0,py=0,pinch=0;
+  var el=renderer.domElement;
+  el.addEventListener('pointerdown',function(e){dragging=true;spin=false;spinBtn.classList.remove('on');px=e.clientX;py=e.clientY;});
+  window.addEventListener('pointermove',function(e){
+    if(!dragging)return;
+    theta-=(e.clientX-px)*0.006; phi-=(e.clientY-py)*0.004;
+    px=e.clientX;py=e.clientY;
+  });
+  window.addEventListener('pointerup',function(){dragging=false;});
+  el.addEventListener('wheel',function(e){e.preventDefault();dist*=(1+e.deltaY*0.001);},{passive:false});
+  el.addEventListener('touchstart',function(e){
+    if(e.touches.length===2){
+      pinch=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    }
+  },{passive:true});
+  el.addEventListener('touchmove',function(e){
+    if(e.touches.length===2){
+      var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      if(pinch>0) dist*=pinch/d;
+      pinch=d;
+    }
+  },{passive:true});
+
+  var spinBtn=document.getElementById('spinBtn');
+  spinBtn.addEventListener('click',function(){spin=!spin;this.classList.toggle('on',spin);});
+
+  window.addEventListener('resize',function(){
+    W=window.innerWidth;H=window.innerHeight;
+    camera.aspect=W/H;camera.updateProjectionMatrix();
+    renderer.setSize(W,H);
+  });
+
+  (function loop(){
+    requestAnimationFrame(loop);
+    if(spin) theta+=0.0035;
+    updateCam();
+    renderer.render(scene,camera);
+  })();
+})();
+</script>
+</body>
+</html>
