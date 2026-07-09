@@ -424,7 +424,7 @@
   // ================= 材料台帳（Firestore同期・編集キー共通） =================
   (function(){
     var ZKEY='kawasaki-zairyo';
-    var MATS=['MS2500(4L)','PU9000(4L)','PS169N(4L)','MS2500ｶｰﾄﾘｯｼﾞ','プライマー','バッカー20×5','マスキング','ウエス・溶剤','その他'];
+    var MATS=['MS2500(4L)','PU9000(4L)','PS169N(4L)','MS2500ｶｰﾄﾘｯｼﾞ','トナー ブラック','トナー ニューグレー','プライマーUM-2','プライマーBC-3','バッカー20×5','マスキング','ウエス・溶剤','その他'];
     var DESTS=['うち','将和','その他'];
     var THEORY=[
       ['外壁タイル目地（縦）',210,20,15,'MS2500(4L)',true],
@@ -482,7 +482,6 @@
         var nyu=sum(m,'搬入'),hen=sum(m,'返品');
         var outs=DESTS.map(function(d){return sum(m,'払出',d);});
         var total=outs.reduce(function(a,b){return a+b;},0);
-        if(nyu===0&&total===0&&hen===0)return;
         var zan=nyu-total+hen;
         h+='<tr><td>'+m+'</td><td>'+fmt(nyu)+'</td>'
           +outs.map(function(v,i){return '<td'+(i===1&&v>0?' class="neg"':'')+'>'+(v?fmt(v):'—')+'</td>';}).join('')
