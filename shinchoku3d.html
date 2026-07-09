@@ -118,11 +118,7 @@
   </div>
   <div class="zpanel"><h2>集計（在庫と払出先）</h2><table id="zsum"></table></div>
   <div class="zpanel">
-    <h2>理論との突合（うち施工分）</h2>
-    <div class="zrow">
-      <div><label>ロス係数</label><input type="number" id="zLoss" step="0.05" value="1.2"></div>
-      <div><label>バッカー</label><select id="zBacker"><option value="1">入れる(20×10)</option><option value="0">入れない(20×15)</option></select></div>
-    </div>
+    <h2>予測必要量</h2>
     <div id="ztheory"></div>
   </div>
   <div class="zpanel"><h2>履歴（直近）</h2><div id="zlogList"><div class="sub">記録なし</div></div></div>
@@ -483,16 +479,13 @@
       });
       $('zsum').innerHTML=h;
 
-      var loss=parseFloat($('zLoss').value)||1.2, bk=$('zBacker').value==='1', need={};
-      THEORY.forEach(function(t){var d=(bk&&t[5])?10:t[3];need[t[4]]=(need[t[4]]||0)+t[1]*t[2]*d/1000*loss;});
-      var th='';
+      var loss=1.2, need={};
+      THEORY.forEach(function(t){need[t[4]]=(need[t[4]]||0)+t[1]*t[2]*t[3]/1000*loss;});
+      var th='<table><tr><th>材料</th><th>予測必要缶数</th></tr>';
       Object.keys(need).forEach(function(m){
-        var cans=Math.ceil(need[m]/4),actual=sum(m,'払出','うち'),diff=actual-cans;
-        th+='<div style="margin-bottom:8px"><b style="font-size:12.5px">'+m+'</b>'
-          +'<table><tr><th>理論缶数</th><th>実払出(うち)</th><th>差</th></tr>'
-          +'<tr><td style="text-align:right">'+cans+'</td><td>'+fmt(actual)+'</td>'
-          +'<td class="'+(diff>0?'neg':'zan')+'">'+(diff>0?'+':'')+fmt(diff)+'</td></tr></table></div>';
+        th+='<tr><td style="text-align:left;font-weight:700">'+m+'</td><td>'+Math.ceil(need[m]/4)+'</td></tr>';
       });
+      th+='</table>';
       $('ztheory').innerHTML=th;
 
       var list=$('zlogList');
@@ -521,8 +514,6 @@
         mat:$('zMat').value,qty:qty,memo:$('zMemo').value.trim()});
       zsave(); render(); $('zQty').value='';$('zMemo').value='';
     });
-    $('zLoss').addEventListener('change',render);
-    $('zBacker').addEventListener('change',render);
     render();
   })();
 
