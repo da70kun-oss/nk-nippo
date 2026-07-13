@@ -186,7 +186,7 @@
 
   var ALL=[],F212=[],F1315=[15,14,13];
   for(var ff=15;ff>=2;ff--){ALL.push(ff); if(ff<=12)F212.push(ff);}
-  function roomsOf(f){return f>=15?2:f>=13?6:8;}
+  function roomsOf(f){return f>=15?2:f>=13?4:8;}
   function lab(f){return f===14?'14F　L型バルコニー':f+'F　ルーフバルコニー';}
 
   // 妻面の並び（南角→サッシ2枚→SB→サッシ→廊下側角）＋横目地（各階上下2本）＋上部（13〜15F）
@@ -356,10 +356,10 @@
       });
     }
   });
-  // 上部（両妻）：13Fルーフ／14F L型／15Fルーフ（部屋数：15F=2・14F/13F=6・12F以下=8）
+  // 上部（両妻）：13Fルーフ／14F L型／15Fルーフ（部屋数：15F=2・14F/13F=4・12F以下=8。住戸計98）
   [['e',1],['w',-1]].forEach(function(a){
     var face=a[0], sgn=a[1];
-    var e12=8*RW/2, e13=6*RW/2, e15=2*RW/2;
+    var e12=8*RW/2, e13=4*RW/2, e15=2*RW/2;
     reg(face,'ルーフ・L型（13〜15F）',13,
       box(Math.max(e12-e13-0.4,0.5),FH*0.36,D,sgn*((e12+e13)/2),12*FH+FH*0.18,0));
     reg(face,'ルーフ・L型（13〜15F）',14,
